@@ -1,0 +1,12 @@
+# Variables de entorno (contiene credenciales reales, nunca se sube)
+.env
+
+# Dependencias de Composer (se regeneran con composer install)
+vendor/
+
+# Archivos de sistema operativo
+.DS_Store
+Thumbs.db
+
+# Archivos temporales de prueba
+test.php
