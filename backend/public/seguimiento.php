@@ -5,6 +5,7 @@ require_once __DIR__ . '/../src/bootstrap.php';
 use App\Database;
 
 header('Content-Type: application/json');
+header('Access-Control-Allow-Origin: *');
 
 $codigo = $_GET['codigo'] ?? null;
 

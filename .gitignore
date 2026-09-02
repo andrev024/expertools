@@ -1,12 +1,17 @@
 # Variables de entorno (contiene credenciales reales, nunca se sube)
 .env
-
+ 
 # Dependencias de Composer (se regeneran con composer install)
 vendor/
-
+ 
+# Dependencias de npm / archivos generados por Vite (se regeneran con npm install)
+node_modules/
+frontend/dist/
+frontend/.vite/
+ 
 # Archivos de sistema operativo
 .DS_Store
 Thumbs.db
-
+ 
 # Archivos temporales de prueba
 test.php
