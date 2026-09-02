@@ -7,14 +7,19 @@ use App\Middleware;
 
 header('Content-Type: application/json');
 
-// Solo recepcion (o admin) puede crear ordenes.
-// $usuarioAuth trae el "sub" (id) y "rol" del token, ya verificado.
-$usuarioAuth = Middleware::requireAuth(['recepcion', 'admin']);
+// Cualquier usuario logueado (recepcion, tecnico, admin) puede acceder aqui.
+// La restriccion de "quien puede crear" se valida mas abajo, solo para POST.
+$usuarioAuth = Middleware::requireAuth(['recepcion', 'tecnico', 'admin']);
 
 $pdo = Database::getConnection();
 $metodo = $_SERVER['REQUEST_METHOD'];
 
 if ($metodo === 'POST') {
+    if (!in_array($usuarioAuth->rol, ['recepcion', 'admin'])) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Solo recepción puede crear órdenes']);
+        exit;
+    }
     crearOrden($pdo, $usuarioAuth);
 } elseif ($metodo === 'GET') {
     listarOrdenes($pdo);
@@ -37,11 +42,8 @@ function crearOrden(\PDO $pdo, object $usuarioAuth): void
         return;
     }
 
-    // Codigo de seguimiento simple y legible: TAL-A1B2C3
     $codigoSeguimiento = 'TAL-' . strtoupper(substr(bin2hex(random_bytes(4)), 0, 6));
 
-    // Empezamos una transaccion: si algo falla a mitad de camino,
-    // no queremos una orden creada sin su registro de historial.
     $pdo->beginTransaction();
 
     try {
@@ -53,7 +55,6 @@ function crearOrden(\PDO $pdo, object $usuarioAuth): void
         $stmt->execute([$codigoSeguimiento, $articuloId, $tipo, $ordenOriginalId]);
         $ordenId = $pdo->lastInsertId();
 
-        // Primer registro de trazabilidad: siempre se crea al nacer la orden.
         $stmtHistorial = $pdo->prepare(
             'INSERT INTO historial_estado (orden_id, estado, comentario, usuario_id)
              VALUES (?, "recibido", "Articulo recibido en recepcion", ?)'
@@ -79,12 +80,13 @@ function listarOrdenes(\PDO $pdo): void
 {
     $stmt = $pdo->query(
         'SELECT os.id, os.codigo_seguimiento, os.tipo, os.estado_actual, os.fecha_ingreso,
+                os.intentos_contacto_cliente,
                 a.tipo AS articulo_tipo, a.marca, a.modelo,
-                c.nombre AS cliente_nombre
+                c.nombre AS cliente_nombre, c.telefono AS cliente_telefono
          FROM orden_servicio os
          JOIN articulo a ON a.id = os.articulo_id
          JOIN cliente c ON c.id = a.cliente_id
-         ORDER BY os.fecha_ingreso DESC'
+         ORDER BY os.fecha_ingreso ASC'
     );
 
     echo json_encode($stmt->fetchAll());

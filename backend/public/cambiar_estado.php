@@ -30,16 +30,17 @@ if (!$ordenId || !$nuevoEstado) {
 }
 
 // ============================================
-// Mapa de transiciones permitidas: estado_actual => [estados_a_los_que_puede_pasar]
-// Esta es la "máquina de estados" hecha código: si el estado pedido
-// no está en la lista permitida desde el estado actual, se rechaza.
+// Máquina de estados v2:
+// - El técnico diagnostica y cotiza (ya no recepción).
+// - "cotizado" puede derivar en aprobada/rechazada/sin_respuesta.
+// - Existe salida directa a "chatarra" desde el diagnóstico.
 // ============================================
 $transicionesPermitidas = [
-    'recibido' => ['diagnostico'],
-    'diagnostico' => ['cotizacion'],
-    'cotizacion' => ['en_reparacion', 'devuelto_sin_reparar'],
-    'en_reparacion' => ['esperando_repuestos', 'finalizado_tecnico'],
-    'esperando_repuestos' => ['en_reparacion'],
+    'recibido' => ['en_diagnostico'],
+    'en_diagnostico' => ['chatarra', 'cotizado'],
+    'cotizado' => ['en_reparacion', 'no_autorizado', 'sin_respuesta'],
+    'en_reparacion' => ['esperando_repuesto', 'finalizado_tecnico'],
+    'esperando_repuesto' => ['en_reparacion'],
     'finalizado_tecnico' => ['en_revision_recepcion'],
     'en_revision_recepcion' => ['listo_para_entregar'],
     'listo_para_entregar' => ['entregado'],
@@ -47,12 +48,14 @@ $transicionesPermitidas = [
 
 // Quién puede mover a cada estado nuevo (además de admin, que siempre puede)
 $rolesPorEstado = [
-    'diagnostico' => ['tecnico'],
-    'cotizacion' => ['recepcion'],       // presencial, la registra recepción
+    'en_diagnostico' => ['tecnico'],
+    'chatarra' => ['tecnico'],
+    'cotizado' => ['tecnico'],       // el tecnico es quien cotiza ahora
     'en_reparacion' => ['tecnico'],
-    'esperando_repuestos' => ['tecnico'],
+    'no_autorizado' => ['tecnico', 'recepcion'],
+    'sin_respuesta' => ['tecnico', 'recepcion'],
+    'esperando_repuesto' => ['tecnico'],
     'finalizado_tecnico' => ['tecnico'],
-    'devuelto_sin_reparar' => ['recepcion'],
     'en_revision_recepcion' => ['tecnico'],
     'listo_para_entregar' => ['recepcion'],
     'entregado' => ['recepcion'],
@@ -61,8 +64,6 @@ $rolesPorEstado = [
 $pdo->beginTransaction();
 
 try {
-    // Bloqueamos la fila con FOR UPDATE para evitar que dos personas
-    // cambien el estado de la misma orden al mismo tiempo (condición de carrera).
     $stmt = $pdo->prepare('SELECT estado_actual FROM orden_servicio WHERE id = ? FOR UPDATE');
     $stmt->execute([$ordenId]);
     $orden = $stmt->fetch();
@@ -95,17 +96,14 @@ try {
         exit;
     }
 
-    // Actualiza el estado "resumen" en orden_servicio (para consultas rápidas)
     $stmtUpdate = $pdo->prepare('UPDATE orden_servicio SET estado_actual = ? WHERE id = ?');
     $stmtUpdate->execute([$nuevoEstado, $ordenId]);
 
-    // Si llegó a un estado final, registra la fecha de entrega
     if ($nuevoEstado === 'entregado') {
         $pdo->prepare('UPDATE orden_servicio SET fecha_entrega = NOW() WHERE id = ?')
             ->execute([$ordenId]);
     }
 
-    // El registro de trazabilidad: nunca se pisa el pasado, solo se agrega.
     $stmtHistorial = $pdo->prepare(
         'INSERT INTO historial_estado (orden_id, estado, comentario, usuario_id)
          VALUES (?, ?, ?, ?)'
