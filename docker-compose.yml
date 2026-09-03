@@ -1,0 +1,43 @@
+services:
+  db:
+    image: mysql:8.0
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: taller_tracker
+    ports:
+      # Usamos 3307 en tu maquina (host) para no chocar con el MySQL de XAMPP
+      # que ya tienes corriendo en el 3306. Dentro de la red de Docker,
+      # el backend igual se conecta por el puerto interno 3306.
+      - "3307:3306"
+    volumes:
+      # Guarda los datos de MySQL en un volumen, para que sobrevivan
+      # aunque borres y recrees el contenedor.
+      - db_data:/var/lib/mysql
+      # Este script se corre UNA SOLA VEZ, automaticamente, la primera
+      # vez que el contenedor de MySQL arranca con una base de datos vacia.
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_HOST: db
+      DB_NAME: taller_tracker
+      DB_USER: root
+      DB_PASS: rootpassword
+      JWT_SECRET: taller-tracker-clave-secreta-2026-super-larga-y-segura-xyz
+      JWT_EXPIRATION_SECONDS: 28800
+    ports:
+      - "8000:80"
+
+volumes:
+  db_data:
