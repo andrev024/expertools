@@ -17,6 +17,7 @@ services:
       # Este script se corre UNA SOLA VEZ, automaticamente, la primera
       # vez que el contenedor de MySQL arranca con una base de datos vacia.
       - ./database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./database/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql:ro
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       interval: 5s
@@ -38,6 +39,14 @@ services:
       JWT_EXPIRATION_SECONDS: 28800
     ports:
       - "8000:80"
+
+  frontend:
+    build: ./frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "5174:80"
 
 volumes:
   db_data:
