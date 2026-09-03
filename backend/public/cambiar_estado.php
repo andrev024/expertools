@@ -4,6 +4,7 @@ require_once __DIR__ . '/../src/bootstrap.php';
 
 use App\Database;
 use App\Middleware;
+use App\MaquinaEstados;
 
 header('Content-Type: application/json');
 
@@ -29,38 +30,6 @@ if (!$ordenId || !$nuevoEstado) {
     exit;
 }
 
-// ============================================
-// Máquina de estados v2:
-// - El técnico diagnostica y cotiza (ya no recepción).
-// - "cotizado" puede derivar en aprobada/rechazada/sin_respuesta.
-// - Existe salida directa a "chatarra" desde el diagnóstico.
-// ============================================
-$transicionesPermitidas = [
-    'recibido' => ['en_diagnostico'],
-    'en_diagnostico' => ['chatarra', 'cotizado'],
-    'cotizado' => ['en_reparacion', 'no_autorizado', 'sin_respuesta'],
-    'en_reparacion' => ['esperando_repuesto', 'finalizado_tecnico'],
-    'esperando_repuesto' => ['en_reparacion'],
-    'finalizado_tecnico' => ['en_revision_recepcion'],
-    'en_revision_recepcion' => ['listo_para_entregar'],
-    'listo_para_entregar' => ['entregado'],
-];
-
-// Quién puede mover a cada estado nuevo (además de admin, que siempre puede)
-$rolesPorEstado = [
-    'en_diagnostico' => ['tecnico'],
-    'chatarra' => ['tecnico'],
-    'cotizado' => ['tecnico'],       // el tecnico es quien cotiza ahora
-    'en_reparacion' => ['tecnico'],
-    'no_autorizado' => ['tecnico', 'recepcion'],
-    'sin_respuesta' => ['tecnico', 'recepcion'],
-    'esperando_repuesto' => ['tecnico'],
-    'finalizado_tecnico' => ['tecnico'],
-    'en_revision_recepcion' => ['tecnico'],
-    'listo_para_entregar' => ['recepcion'],
-    'entregado' => ['recepcion'],
-];
-
 $pdo->beginTransaction();
 
 try {
@@ -76,20 +45,20 @@ try {
     }
 
     $estadoActual = $orden['estado_actual'];
-    $permitidos = $transicionesPermitidas[$estadoActual] ?? [];
 
-    if (!in_array($nuevoEstado, $permitidos)) {
+    // Toda la logica de "que se puede y quien puede" ahora vive en MaquinaEstados,
+    // que ya esta probada por separado con PHPUnit (no depende de la base de datos).
+    if (!MaquinaEstados::esTransicionValida($estadoActual, $nuevoEstado)) {
         $pdo->rollBack();
         http_response_code(422);
         echo json_encode([
             'error' => "No se puede pasar de '{$estadoActual}' a '{$nuevoEstado}'",
-            'estados_permitidos_desde_aqui' => $permitidos,
+            'estados_permitidos_desde_aqui' => MaquinaEstados::estadosPermitidosDesde($estadoActual),
         ]);
         exit;
     }
 
-    $rolesPermitidosParaEsteEstado = $rolesPorEstado[$nuevoEstado] ?? [];
-    if ($usuarioAuth->rol !== 'admin' && !in_array($usuarioAuth->rol, $rolesPermitidosParaEsteEstado)) {
+    if (!MaquinaEstados::rolPuedeTransicionar($usuarioAuth->rol, $nuevoEstado)) {
         $pdo->rollBack();
         http_response_code(403);
         echo json_encode(['error' => 'Tu rol no puede realizar este cambio de estado']);

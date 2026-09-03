@@ -4,6 +4,7 @@ require_once __DIR__ . '/../src/bootstrap.php';
 
 use App\Database;
 use App\Middleware;
+use App\GeneradorCodigo;
 
 header('Content-Type: application/json');
 
@@ -42,7 +43,7 @@ function crearOrden(\PDO $pdo, object $usuarioAuth): void
         return;
     }
 
-    $codigoSeguimiento = 'TAL-' . strtoupper(substr(bin2hex(random_bytes(4)), 0, 6));
+    $codigoSeguimiento = GeneradorCodigo::generarCodigoSeguimiento();
 
     $pdo->beginTransaction();
 
