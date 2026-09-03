@@ -55,3 +55,45 @@ jobs:
       - name: Compilar el proyecto (verifica que no haya errores)
         working-directory: frontend
         run: npm run build
+
+  # ============================================
+  # JOB 3: Construir y publicar las imagenes Docker
+  # Solo corre si los 2 jobs anteriores pasaron (needs), y solo en push
+  # a main (no en pull requests, por seguridad de permisos).
+  # ============================================
+  build-and-push-images:
+    needs: [backend-tests, frontend-build]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+
+    # Permiso especial requerido para poder publicar en GitHub Container Registry
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Descargar el codigo del repositorio
+        uses: actions/checkout@v4
+
+      - name: Iniciar sesion en GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          # GITHUB_TOKEN es generado automaticamente por GitHub Actions,
+          # no hay que crear ningun secreto manualmente para esto.
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Construir y publicar imagen del backend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/expertools-backend:latest
+
+      - name: Construir y publicar imagen del frontend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/expertools-frontend:latest
