@@ -1,0 +1,57 @@
+name: CI
+
+# Cuando se ejecuta este pipeline: en cada push y en cada pull request
+# hacia la rama main.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # ============================================
+  # JOB 1: Tests del backend (PHP)
+  # ============================================
+  backend-tests:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Descargar el codigo del repositorio
+        uses: actions/checkout@v4
+
+      - name: Instalar PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: pdo, pdo_mysql, zip
+
+      - name: Instalar dependencias con Composer
+        working-directory: backend
+        run: composer install --no-interaction --prefer-dist
+
+      - name: Correr los tests con PHPUnit
+        working-directory: backend
+        run: vendor/bin/phpunit
+
+  # ============================================
+  # JOB 2: Verificar que el frontend compile sin errores
+  # ============================================
+  frontend-build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Descargar el codigo del repositorio
+        uses: actions/checkout@v4
+
+      - name: Instalar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Instalar dependencias con npm
+        working-directory: frontend
+        run: npm install
+
+      - name: Compilar el proyecto (verifica que no haya errores)
+        working-directory: frontend
+        run: npm run build
