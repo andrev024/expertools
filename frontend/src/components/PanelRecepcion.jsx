@@ -141,28 +141,30 @@ function PanelRecepcion() {
       {cargando ? (
         <p>Cargando...</p>
       ) : (
-        <table className="orders-table table table-hover table-striped align-middle">
-          <thead>
-            <tr>
-              <th className="fw-semibold">Código</th>
-              <th className="fw-semibold">Artículo</th>
-              <th className="fw-semibold">Cliente</th>
-              <th className="fw-semibold">Estado</th>
-              <th className="fw-semibold">Tipo</th>
-            </tr>
-          </thead>
-          <tbody>
-            {ordenes.map((orden) => (
-              <tr key={orden.id}>
-                <td>{orden.codigo_seguimiento}</td>
-                <td>{orden.articulo_tipo} {orden.marca}</td>
-                <td>{orden.cliente_nombre}</td>
-                <td><span className="badge rounded-pill bg-success-subtle text-success">{formatearEstado(orden.estado_actual)}</span></td>
-                <td>{formatearTipoOrden(orden.tipo)}</td>
+        <div className="orders-table-wrapper">
+          <table className="orders-table table table-hover table-striped align-middle">
+            <thead>
+              <tr>
+                <th className="fw-semibold">Código</th>
+                <th className="fw-semibold">Artículo</th>
+                <th className="fw-semibold">Cliente</th>
+                <th className="fw-semibold">Estado</th>
+                <th className="fw-semibold">Tipo</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {ordenes.map((orden) => (
+                <tr key={orden.id}>
+                  <td data-label="Código">{orden.codigo_seguimiento}</td>
+                  <td data-label="Artículo">{orden.articulo_tipo} {orden.marca}</td>
+                  <td data-label="Cliente">{orden.cliente_nombre}</td>
+                  <td data-label="Estado"><span className="badge rounded-pill bg-success-subtle text-success">{formatearEstado(orden.estado_actual)}</span></td>
+                  <td data-label="Tipo">{formatearTipoOrden(orden.tipo)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );

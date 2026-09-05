@@ -229,11 +229,15 @@
 .order-card { margin: 12px 0; padding: 20px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); box-shadow: 0 7px 20px rgba(27,53,48,.045); }
 .order-card h3 { margin: 0 0 8px; color: var(--accent-dark); }
 .order-card input, .order-card textarea { margin-top: 10px; }
-.orders-table { width: 100%; border-collapse: collapse; overflow: hidden; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; font-size: 14px; }
+.orders-table-wrapper { width: 100%; max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; border: 1px solid var(--border); border-radius: 10px; }
+.orders-table { width: 100%; min-width: 620px; border-collapse: collapse; overflow: hidden; background: var(--surface); border: 0; border-radius: 10px; font-size: 14px; }
 .orders-table th { background: var(--ink-soft); color: var(--text-h); text-align: left; font-size: 11px; letter-spacing: 1px; text-transform: uppercase; }
 .orders-table th, .orders-table td { padding: 14px 13px; border-bottom: 1px solid var(--border); }
 .orders-table tr:last-child td { border-bottom: 0; }
-@media (max-width: 760px) { .orders-table { display: block; overflow-x: auto; white-space: nowrap; } }
+@media (max-width: 760px) {
+  .orders-table-wrapper { margin-inline: 0; }
+  .orders-table { white-space: nowrap; }
+}
 
 .auth-page { min-height: 100svh; padding: 30px 7vw; background: linear-gradient(135deg, #e1f1f1 0%, #f8fbfb 48%, #ffffff 100%); }
 .auth-brand { margin-bottom: 70px; }
