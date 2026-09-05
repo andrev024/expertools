@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate, Link } from 'react-router-dom';
+import { HashRouter, Routes, Route, Navigate, Link } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import Login from './components/Login';
 import PanelRecepcion from './components/PanelRecepcion';
@@ -22,7 +22,7 @@ function Encabezado({ usuario, logout }) {
           <>
             <div className="user-chip">
               <span className="user-avatar">{usuario.nombre?.charAt(0).toUpperCase()}</span>
-              <span><b>{usuario.nombre}</b><small>{usuario.rol}</small></span>
+              <span className="user-details"><b>{usuario.nombre}</b><small>{usuario.rol}</small></span>
             </div>
             <button className="button button-quiet btn btn-link" onClick={logout}>Cerrar sesión</button>
           </>
@@ -68,7 +68,7 @@ function Panel() {
 function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
+      <HashRouter>
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/seguimiento" element={<Seguimiento />} />
@@ -82,7 +82,7 @@ function App() {
           />
           <Route path="/" element={<Navigate to="/panel" />} />
         </Routes>
-      </BrowserRouter>
+      </HashRouter>
     </AuthProvider>
   );
 }

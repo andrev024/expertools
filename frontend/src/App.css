@@ -205,7 +205,8 @@
 .header-actions, .user-chip { display: flex; align-items: center; gap: 14px; }
 .user-chip { gap: 9px; }
 .user-avatar { display: grid; place-items: center; width: 33px; height: 33px; border-radius: 50%; background: var(--ink-soft); color: var(--accent-dark); font-weight: bold; }
-.user-chip b, .user-chip small { display: block; line-height: 1.2; }
+.user-details { display: grid; gap: 2px; min-width: 110px; line-height: 1.2; }
+.user-chip b, .user-chip small { display: block; white-space: nowrap; }
 .user-chip b { color: var(--text-h); font-size: 14px; }
 .user-chip small { text-transform: uppercase; letter-spacing: 1px; font-size: 10px; color: var(--accent-dark); margin-top: 3px; }
 .header-note, .muted { color: #82908d; font-size: 14px; }

@@ -34,7 +34,7 @@ function Seguimiento({ embebido = false }) {
       )}
       <main className={embebido ? 'tracking-main tracking-main-embedded container-fluid p-0' : 'tracking-main container py-5'}>
         <div className="row justify-content-center">
-          <div className="col-12 col-lg-9 col-xl-8">
+          <div className="col-12">
             <span className="eyebrow text-uppercase fw-semibold">Seguimiento en tiempo real</span>
             <h1 className="display-5 fw-semibold mt-2 mb-3">Seguimiento de tu reparación</h1>
             <p className="page-lead text-secondary mb-4">Ingresa el código que te dieron en recepción para conocer el estado de tu artículo.</p>
