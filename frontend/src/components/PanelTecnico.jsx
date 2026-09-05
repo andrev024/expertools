@@ -131,16 +131,16 @@ function PanelTecnico() {
       const telefono = String(orden?.cliente_telefono || '').replace(/\D/g, '');
       const telefonoWhatsapp = telefono.length === 10 && telefono.startsWith('3') ? `57${telefono}` : telefono;
       const mensaje = [
-        `Hola ${orden?.cliente_nombre || 'cliente'}, te contactamos desde Expertools.`,
-        '- Te enviamos la cotización de tu servicio:',
+        ` 👋 Hola ${orden?.cliente_nombre || 'cliente'}, te contactamos desde Expertools.`,
+        '- 📄 Te enviamos la cotización de tu servicio:',
         '',
-        `- Código de seguimiento: ${orden?.codigo_seguimiento || ordenId}`,
-        `- Artículo: ${orden?.articulo_tipo || ''}${orden?.marca ? ` ${orden.marca}` : ''}${orden?.modelo ? ` ${orden.modelo}` : ''}`,
-        `- Diagnóstico: ${form.dictamen}`,
-        `- Repuestos: ${form.repuestos?.filter((repuesto) => repuesto.referencia.trim()).map((repuesto) => `${repuesto.referencia} (x${repuesto.cantidad})${repuesto.descripcion ? `: ${repuesto.descripcion}` : ''}`).join(', ') || 'No requiere repuestos'}`,
-        `- 🙆🏼‍♂️Valor total: $${montoTotal.toLocaleString('es-CO')}`,
+        `- 📌 Código de seguimiento: ${orden?.codigo_seguimiento || ordenId}`,
+        `- 💻 Artículo: ${orden?.articulo_tipo || ''}${orden?.marca ? ` ${orden.marca}` : ''}${orden?.modelo ? ` ${orden.modelo}` : ''}`,
+        `- 🔍 Diagnóstico: ${form.dictamen}`,
+        `- 🛠️ Repuestos: ${form.repuestos?.filter((repuesto) => repuesto.referencia.trim()).map((repuesto) => `${repuesto.referencia} (x${repuesto.cantidad})${repuesto.descripcion ? `: ${repuesto.descripcion}` : ''}`).join(', ') || 'No requiere repuestos'}`,
+        `- 💰Valor total: $${montoTotal.toLocaleString('es-CO')}`,
         '',
-        'Por favor confírmanos si autorizas la reparación.',
+        ' ✍️ Por favor confírmanos si autorizas la reparación.',
       ].join('\n');
       const urlWhatsapp = `https://wa.me/${telefonoWhatsapp}?text=${encodeURIComponent(mensaje)}`;
       if (ventanaWhatsapp) {
