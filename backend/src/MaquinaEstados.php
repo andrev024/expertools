@@ -9,6 +9,7 @@ class MaquinaEstados
         'recibido' => ['en_diagnostico'],
         'en_diagnostico' => ['chatarra', 'cotizado'],
         'cotizado' => ['en_reparacion', 'no_autorizado', 'sin_respuesta'],
+        'sin_respuesta' => ['en_diagnostico'],
         'en_reparacion' => ['esperando_repuesto', 'finalizado_tecnico'],
         'esperando_repuesto' => ['en_reparacion'],
         'finalizado_tecnico' => ['en_revision_recepcion'],

@@ -40,6 +40,16 @@ class MaquinaEstadosTest extends TestCase
         $this->assertContains('sin_respuesta', $permitidos);
     }
 
+    public function testTecnicoPuedeRetomarOrdenSinRespuesta(): void
+    {
+        $this->assertTrue(
+            MaquinaEstados::esTransicionValida('sin_respuesta', 'en_diagnostico')
+        );
+        $this->assertTrue(
+            MaquinaEstados::rolPuedeTransicionar('tecnico', 'en_diagnostico')
+        );
+    }
+
     public function testSoloTecnicoPuedeMoverACotizado(): void
     {
         $this->assertTrue(MaquinaEstados::rolPuedeTransicionar('tecnico', 'cotizado'));

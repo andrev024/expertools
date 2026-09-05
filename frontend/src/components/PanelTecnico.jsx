@@ -13,6 +13,7 @@ const TRANSICIONES_SIMPLES = {
 // tomar la orden, diagnosticar/cotizar, responder por el cliente, o transicion simple.
 const ESTADOS_ACCIONABLES = [
   'recibido',
+  'sin_respuesta',
   'en_diagnostico',
   'cotizado',
   'en_reparacion',
@@ -28,8 +29,6 @@ function PanelTecnico() {
 
   // Formularios de cotizacion, uno por orden: { ordenId: {repuestos, dictamen, monto} }
   const [formsCotizacion, setFormsCotizacion] = useState({});
-  const [canales, setCanales] = useState({}); // { ordenId: 'presencial' | 'whatsapp' }
-
   async function cargarOrdenes() {
     try {
       const datos = await apiFetch('ordenes.php');
@@ -62,7 +61,7 @@ function PanelTecnico() {
     }
   }
 
-  // "Tomar" una orden recibida: pasa a en_diagnostico
+  // Retoma una orden recibida o sin respuesta para iniciar el diagnóstico.
   function tomarOrden(ordenId) {
     cambiarEstadoSimple(ordenId, 'en_diagnostico');
   }
@@ -81,6 +80,7 @@ function PanelTecnico() {
   async function enviarCotizacion(ordenId) {
     setError('');
     const form = formsCotizacion[ordenId] || {};
+    const orden = ordenes.find((item) => item.id === ordenId);
     if (!form.dictamen || !form.monto) {
       setError('Dictamen y monto son requeridos');
       return;
@@ -96,6 +96,20 @@ function PanelTecnico() {
           monto: Number(form.monto),
         }),
       });
+      const telefono = String(orden?.cliente_telefono || '').replace(/\D/g, '');
+      const telefonoWhatsapp = telefono.length === 10 && telefono.startsWith('3') ? `57${telefono}` : telefono;
+      const mensaje = [
+        `Hola ${orden?.cliente_nombre || 'cliente'}, te enviamos la cotización de tu servicio.`,
+        '',
+        `Orden: ${orden?.codigo_seguimiento || ordenId}`,
+        `Artículo: ${orden?.articulo_tipo || ''}${orden?.marca ? ` ${orden.marca}` : ''}${orden?.modelo ? ` ${orden.modelo}` : ''}`,
+        `Diagnóstico: ${form.dictamen}`,
+        `Repuestos: ${form.repuestos || 'No requiere repuestos'}`,
+        `Valor total: $${Number(form.monto).toLocaleString('es-CO')}`,
+        '',
+        'Por favor confírmanos si autorizas la reparación.',
+      ].join('\n');
+      window.open(`https://wa.me/${telefonoWhatsapp}?text=${encodeURIComponent(mensaje)}`, '_blank', 'noopener,noreferrer');
       cargarOrdenes();
     } catch (err) {
       setError(err.message);
@@ -110,7 +124,6 @@ function PanelTecnico() {
         body: JSON.stringify({
           orden_id: ordenId,
           respuesta,
-          canal: canales[ordenId] || 'presencial',
         }),
       });
       cargarOrdenes();
@@ -135,7 +148,7 @@ function PanelTecnico() {
           <p>Estado actual: <strong className="badge rounded-pill bg-success-subtle text-success">{formatearEstado(orden.estado_actual)}</strong></p>
 
           {/* Estado: recibido -> boton para tomar la orden */}
-          {orden.estado_actual === 'recibido' && (
+          {(orden.estado_actual === 'recibido' || orden.estado_actual === 'sin_respuesta') && (
             <button className="button button-primary btn btn-primary" onClick={() => tomarOrden(orden.id)}>Tomar orden (empezar diagnóstico)</button>
           )}
 
@@ -174,16 +187,7 @@ function PanelTecnico() {
           {/* Estado: cotizado -> registrar la respuesta del cliente */}
           {orden.estado_actual === 'cotizado' && (
             <div>
-              <p>Intentos de contacto: {orden.intentos_contacto_cliente} / 3</p>
-              <select
-                className="form-select mb-2"
-                value={canales[orden.id] || 'presencial'}
-                onChange={(e) => setCanales({ ...canales, [orden.id]: e.target.value })}
-                style={{ display: 'block', marginBottom: '6px' }}
-              >
-                <option value="presencial">Presencial</option>
-                <option value="whatsapp">WhatsApp</option>
-              </select>
+              <p>Intentos de contacto por WhatsApp: {orden.intentos_contacto_cliente} / 3</p>
               <button className="button button-primary btn btn-primary" onClick={() => responderCliente(orden.id, 'aprobada')}>Cliente aprobó</button>{' '}
               <button className="button button-danger btn btn-outline-danger" onClick={() => responderCliente(orden.id, 'rechazada')}>Cliente rechazó</button>{' '}
               <button className="button button-secondary btn btn-outline-secondary" onClick={() => responderCliente(orden.id, 'intento_fallido')}>

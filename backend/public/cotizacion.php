@@ -82,7 +82,7 @@ function responderCotizacion(\PDO $pdo, object $usuarioAuth): void
 
     $ordenId = $datos['orden_id'] ?? null;
     $respuesta = $datos['respuesta'] ?? null;
-    $canal = $datos['canal'] ?? null;
+    $canal = 'whatsapp';
 
     if (!$ordenId || !$respuesta) {
         http_response_code(400);
