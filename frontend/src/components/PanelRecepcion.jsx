@@ -40,14 +40,14 @@ function PanelRecepcion() {
     const telefono = String(orden.cliente_telefono || '').replace(/\D/g, '');
     const telefonoWhatsapp = telefono.length === 10 && telefono.startsWith('3') ? `57${telefono}` : telefono;
     const mensaje = [
-      `\u{1F44B} Hola ${orden.cliente_nombre}, te contactamos desde Expertools.`,
-      '\u{1F389} ¡Tu equipo ya está listo para entregar!',
+      `\uD83D\uDC4B Hola ${orden.cliente_nombre}, te contactamos desde Expertools.`,
+      '\uD83C\uDF89 ¡Tu equipo ya está listo para entregar!',
       '',
-      `\u{1F516} Código de seguimiento: ${orden.codigo_seguimiento}`,
-      `\u{1F527} Artículo: ${orden.articulo_tipo}${orden.marca ? ` ${orden.marca}` : ''}${orden.modelo ? ` ${orden.modelo}` : ''}`,
+      `\uD83D\uDD16 Código de seguimiento: ${orden.codigo_seguimiento}`,
+      `\uD83D\uDD27 Artículo: ${orden.articulo_tipo}${orden.marca ? ` ${orden.marca}` : ''}${orden.modelo ? ` ${orden.modelo}` : ''}`,
       '',
-      '\u{1F4CD} Puedes acercarte a recepción para recogerlo.',
-      '¡Te esperamos! \u{1F60A}',
+      '\uD83D\uDCCD Puedes acercarte a recepción para recogerlo.',
+      '¡Te esperamos! \uD83D\uDE0A',
     ].join('\n');
 
     window.open(`https://wa.me/${telefonoWhatsapp}?text=${encodeURIComponent(mensaje)}`, '_blank', 'noopener,noreferrer');

@@ -130,16 +130,16 @@ function PanelTecnico() {
       const telefono = String(orden?.cliente_telefono || '').replace(/\D/g, '');
       const telefonoWhatsapp = telefono.length === 10 && telefono.startsWith('3') ? `57${telefono}` : telefono;
       const mensaje = [
-        `\u{1F44B} Hola ${orden?.cliente_nombre || 'cliente'}, te contactamos desde Expertools.`,
-        '\u{1F9FE} Te enviamos la cotización de tu servicio:',
+        `\uD83D\uDC4B Hola ${orden?.cliente_nombre || 'cliente'}, te contactamos desde Expertools.`,
+        '\uD83E\uDDFE Te enviamos la cotización de tu servicio:',
         '',
-        `\u{1F516} Código de seguimiento: ${orden?.codigo_seguimiento || ordenId}`,
-        `\u{1F527} Artículo: ${orden?.articulo_tipo || ''}${orden?.marca ? ` ${orden.marca}` : ''}${orden?.modelo ? ` ${orden.modelo}` : ''}`,
-        `\u{1F50D} Diagnóstico: ${form.dictamen}`,
-        `\u{1F9E9} Repuestos: ${form.repuestos?.filter((repuesto) => repuesto.referencia.trim()).map((repuesto) => `${repuesto.referencia} (x${repuesto.cantidad})${repuesto.descripcion ? `: ${repuesto.descripcion}` : ''}`).join(', ') || 'No requiere repuestos'}`,
-        `\u{1F4B0} Valor total: $${montoTotal.toLocaleString('es-CO')}`,
+        `\uD83D\uDD16 Código de seguimiento: ${orden?.codigo_seguimiento || ordenId}`,
+        `\uD83D\uDD27 Artículo: ${orden?.articulo_tipo || ''}${orden?.marca ? ` ${orden.marca}` : ''}${orden?.modelo ? ` ${orden.modelo}` : ''}`,
+        `\uD83D\uDD0D Diagnóstico: ${form.dictamen}`,
+        `\uD83E\uDDE9 Repuestos: ${form.repuestos?.filter((repuesto) => repuesto.referencia.trim()).map((repuesto) => `${repuesto.referencia} (x${repuesto.cantidad})${repuesto.descripcion ? `: ${repuesto.descripcion}` : ''}`).join(', ') || 'No requiere repuestos'}`,
+        `\uD83D\uDCB0 Valor total: $${montoTotal.toLocaleString('es-CO')}`,
         '',
-        '\u{2705} Por favor confírmanos si autorizas la reparación.',
+        '\u2705 Por favor confírmanos si autorizas la reparación.',
       ].join('\n');
       window.open(`https://wa.me/${telefonoWhatsapp}?text=${encodeURIComponent(mensaje)}`, '_blank', 'noopener,noreferrer');
       cargarOrdenes();
