@@ -121,50 +121,50 @@ function PanelTecnico() {
   if (cargando) return <p>Cargando...</p>;
 
   return (
-    <div>
-      <h2>Órdenes por atender (orden de llegada)</h2>
-      {error && <p style={{ color: 'red' }}>{error}</p>}
-      {ordenes.length === 0 && <p>No hay órdenes pendientes por ahora.</p>}
+    <div className="operations-panel">
+      <h2 className="h4 border-start border-4 ps-3">Órdenes por atender (orden de llegada)</h2>
+      {error && <p className="alert alert-danger">{error}</p>}
+      {ordenes.length === 0 && <p className="alert alert-light border">No hay órdenes pendientes por ahora.</p>}
 
       {ordenes.map((orden) => (
-        <div
-          key={orden.id}
-          style={{ border: '1px solid #ccc', padding: '12px', margin: '8px 0', borderRadius: '6px' }}
-        >
-          <h3>{orden.codigo_seguimiento}</h3>
+        <div key={orden.id} className="order-card card shadow-sm rounded-3 border-0">
+          <h3 className="h5">{orden.codigo_seguimiento}</h3>
           <p>Cliente: {orden.cliente_nombre} ({orden.cliente_telefono})</p>
           <p>Artículo: {orden.articulo_tipo} {orden.marca}</p>
-          <p>Estado actual: <strong>{orden.estado_actual}</strong></p>
+          <p>Estado actual: <strong className="badge rounded-pill bg-success-subtle text-success">{orden.estado_actual}</strong></p>
 
           {/* Estado: recibido -> boton para tomar la orden */}
           {orden.estado_actual === 'recibido' && (
-            <button onClick={() => tomarOrden(orden.id)}>Tomar orden (empezar diagnóstico)</button>
+            <button className="button button-primary btn btn-primary" onClick={() => tomarOrden(orden.id)}>Tomar orden (empezar diagnóstico)</button>
           )}
 
           {/* Estado: en_diagnostico -> formulario de cotizacion + opcion chatarra */}
           {orden.estado_actual === 'en_diagnostico' && (
             <div>
               <textarea
+                className="form-control mb-2"
                 placeholder="Dictamen (qué falló y por qué)"
                 value={formsCotizacion[orden.id]?.dictamen || ''}
                 onChange={(e) => actualizarFormCotizacion(orden.id, 'dictamen', e.target.value)}
                 style={{ display: 'block', width: '100%', marginBottom: '6px' }}
               />
               <input
+                className="form-control mb-2"
                 placeholder="Repuestos (referencia, cantidad, descripción)"
                 value={formsCotizacion[orden.id]?.repuestos || ''}
                 onChange={(e) => actualizarFormCotizacion(orden.id, 'repuestos', e.target.value)}
                 style={{ display: 'block', width: '100%', marginBottom: '6px' }}
               />
               <input
+                className="form-control mb-2"
                 type="number"
                 placeholder="Monto cotizado"
                 value={formsCotizacion[orden.id]?.monto || ''}
                 onChange={(e) => actualizarFormCotizacion(orden.id, 'monto', e.target.value)}
                 style={{ display: 'block', width: '100%', marginBottom: '6px' }}
               />
-              <button onClick={() => enviarCotizacion(orden.id)}>Enviar cotización</button>{' '}
-              <button onClick={() => marcarChatarra(orden.id)} style={{ color: 'red' }}>
+              <button className="button button-primary btn btn-primary" onClick={() => enviarCotizacion(orden.id)}>Enviar cotización</button>{' '}
+              <button className="button button-danger btn btn-outline-danger" onClick={() => marcarChatarra(orden.id)} style={{ color: 'red' }}>
                 Marcar como chatarra (irreparable)
               </button>
             </div>
@@ -175,6 +175,7 @@ function PanelTecnico() {
             <div>
               <p>Intentos de contacto: {orden.intentos_contacto_cliente} / 3</p>
               <select
+                className="form-select mb-2"
                 value={canales[orden.id] || 'presencial'}
                 onChange={(e) => setCanales({ ...canales, [orden.id]: e.target.value })}
                 style={{ display: 'block', marginBottom: '6px' }}
@@ -182,9 +183,9 @@ function PanelTecnico() {
                 <option value="presencial">Presencial</option>
                 <option value="whatsapp">WhatsApp</option>
               </select>
-              <button onClick={() => responderCliente(orden.id, 'aprobada')}>Cliente aprobó</button>{' '}
-              <button onClick={() => responderCliente(orden.id, 'rechazada')}>Cliente rechazó</button>{' '}
-              <button onClick={() => responderCliente(orden.id, 'intento_fallido')}>
+              <button className="button button-primary btn btn-primary" onClick={() => responderCliente(orden.id, 'aprobada')}>Cliente aprobó</button>{' '}
+              <button className="button button-danger btn btn-outline-danger" onClick={() => responderCliente(orden.id, 'rechazada')}>Cliente rechazó</button>{' '}
+              <button className="button button-secondary btn btn-outline-secondary" onClick={() => responderCliente(orden.id, 'intento_fallido')}>
                 Intento sin respuesta
               </button>
             </div>
@@ -194,6 +195,7 @@ function PanelTecnico() {
           {TRANSICIONES_SIMPLES[orden.estado_actual] && (
             <div>
               <input
+                className="form-control mb-2"
                 type="text"
                 placeholder="Comentario (opcional)"
                 value={comentarios[orden.id] || ''}
@@ -201,7 +203,7 @@ function PanelTecnico() {
                 style={{ display: 'block', marginBottom: '6px', width: '100%' }}
               />
               {TRANSICIONES_SIMPLES[orden.estado_actual].map((siguiente) => (
-                <button key={siguiente} onClick={() => cambiarEstadoSimple(orden.id, siguiente)} style={{ marginRight: '8px' }}>
+                <button className="button button-secondary btn btn-outline-secondary" key={siguiente} onClick={() => cambiarEstadoSimple(orden.id, siguiente)} style={{ marginRight: '8px' }}>
                   Pasar a: {siguiente}
                 </button>
               ))}

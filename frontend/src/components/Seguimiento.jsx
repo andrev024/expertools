@@ -24,44 +24,64 @@ function Seguimiento() {
   }
 
   return (
-    <div style={{ maxWidth: '500px', margin: '60px auto', padding: '0 20px' }}>
-      <h1>Seguimiento de tu reparación</h1>
-      <p>Ingresa el código que te dieron en recepción para ver el estado de tu artículo.</p>
+    <div className="tracking-page min-vh-100 bg-light">
+      <header className="public-header container-fluid border-bottom bg-white">
+        <div className="brand d-flex align-items-center"><img className="brand-logo" src="/logo-expertools.png" alt="Expertools" /></div>
+        <a href="/login" className="text-link fw-semibold">Acceso interno →</a>
+      </header>
+      <main className="tracking-main container py-5">
+        <div className="row justify-content-center">
+          <div className="col-12 col-lg-9 col-xl-8">
+            <span className="eyebrow text-uppercase fw-semibold">Seguimiento en tiempo real</span>
+            <h1 className="display-5 fw-semibold mt-2 mb-3">Seguimiento de tu reparación</h1>
+            <p className="page-lead text-secondary mb-4">Ingresa el código que te dieron en recepción para conocer el estado de tu artículo.</p>
 
-      <form onSubmit={buscarOrden} style={{ marginBottom: '24px' }}>
-        <input
-          type="text"
-          placeholder="Ej: TAL-3F6DB0"
-          value={codigo}
-          onChange={(e) => setCodigo(e.target.value)}
-          required
-          style={{ padding: '8px', width: '60%', marginRight: '8px' }}
-        />
-        <button type="submit">Consultar</button>
-      </form>
+            <form onSubmit={buscarOrden} className="tracking-form input-group mb-4">
+              <input
+                className="form-control"
+                type="text"
+                placeholder="Ej: TAL-3F6DB0"
+                value={codigo}
+                onChange={(e) => setCodigo(e.target.value)}
+                required
+              />
+              <button className="btn btn-primary px-4" type="submit">Consultar</button>
+            </form>
 
-      {cargando && <p>Buscando...</p>}
-      {error && <p style={{ color: 'red' }}>{error}</p>}
+            {cargando && <p className="muted text-secondary">Buscando...</p>}
+            {error && <p className="message error alert alert-danger" role="alert">{error}</p>}
 
-      {resultado && (
-        <div style={{ border: '1px solid #ccc', padding: '16px', borderRadius: '8px' }}>
-          <h2>{resultado.codigo_seguimiento}</h2>
-          <p>
-            Estado actual: <strong>{resultado.estado_actual}</strong>
-          </p>
+            {resultado && (
+              <div className="tracking-result card shadow-sm rounded-3 border-0">
+                <div className="card-body p-4">
+                  <div className="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+                    <div>
+                      <span className="small text-uppercase text-secondary fw-semibold">Código de seguimiento</span>
+                      <h2 className="h4 mb-0 mt-1">{resultado.codigo_seguimiento}</h2>
+                    </div>
+                    <p className="mb-0">
+                      <span className="text-secondary me-2">Estado actual:</span>
+                      <strong className="badge rounded-pill bg-success-subtle text-success">{resultado.estado_actual}</strong>
+                    </p>
+                  </div>
 
-          <h3>Línea de tiempo</h3>
-          <ul>
-            {resultado.linea_tiempo.map((paso, index) => (
-              // Usamos el índice como key aquí porque estos pasos no tienen
-              // un id único propio, y la lista no se reordena ni edita.
-              <li key={index}>
-                {paso.estado} — {paso.fecha}
-              </li>
-            ))}
-          </ul>
+                  <h3 className="h6 text-uppercase text-secondary fw-semibold mb-3">Línea de tiempo</h3>
+                  <ul className="list-group list-group-flush">
+                    {resultado.linea_tiempo.map((paso, index) => (
+                      // Usamos el índice como key aquí porque estos pasos no tienen
+                      // un id único propio, y la lista no se reordena ni edita.
+                      <li key={index} className="list-group-item px-0 py-3 d-flex justify-content-between align-items-center gap-3">
+                        <span className="fw-medium">{paso.estado}</span>
+                        <time className="small text-secondary text-nowrap">{paso.fecha}</time>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
-      )}
+      </main>
     </div>
   );
 }

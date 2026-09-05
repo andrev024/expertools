@@ -22,37 +22,50 @@ function Login() {
   }
 
   return (
-    <div style={{ maxWidth: '300px', margin: '80px auto' }}>
-      <h2>Iniciar sesión</h2>
-      <form onSubmit={manejarSubmit}>
-        <div>
-          <label>Email</label>
+    <div className="auth-page bg-light min-vh-100">
+      <div className="auth-brand d-flex align-items-center"><img className="auth-logo" src="/logo-expertools.png" alt="Expertools" /></div>
+      <div className="auth-layout container">
+        <section className="auth-hero">
+          <span className="eyebrow text-uppercase fw-semibold">Plataforma empresarial</span>
+          <h1 className="display-4 fw-semibold">Tu operación, en movimiento.</h1>
+          <p className="text-secondary">Una vista clara para coordinar servicios, clientes y equipos con la confianza de tener todo bajo control.</p>
+        </section>
+        <section className="auth-card card shadow-sm rounded-3 border-0">
+          <div className="card-body p-4">
+          <span className="eyebrow text-uppercase fw-semibold">Acceso interno</span>
+          <h2 className="h3 mt-2">Iniciar sesión</h2>
+          <p className="muted text-secondary">Ingresa con tus credenciales para continuar.</p>
+          <form onSubmit={manejarSubmit}>
+            <div className="field mb-3">
+              <label className="form-label fw-semibold">Email</label>
           <input
+            className="form-control"
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            style={{ display: 'block', width: '100%', marginBottom: '10px' }}
           />
-        </div>
-        <div>
-          <label>Contraseña</label>
+            </div>
+            <div className="field mb-3">
+          <label className="form-label fw-semibold">Contraseña</label>
           <input
+            className="form-control"
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            style={{ display: 'block', width: '100%', marginBottom: '10px' }}
           />
-        </div>
-        {error && <p style={{ color: 'red' }}>{error}</p>}
-        <button type="submit">Entrar</button>
-      </form>
+            </div>
+            {error && <p className="message error alert alert-danger">{error}</p>}
+            <button className="button button-primary button-wide btn btn-primary" type="submit">Entrar al panel <span aria-hidden="true">→</span></button>
+          </form>
 
-      <hr style={{ margin: '24px 0' }} />
+          <div className="auth-divider"><span>o</span></div>
 
-      <p style={{ textAlign: 'center' }}>
-        ¿Eres cliente y quieres ver el estado de tu reparación?<br />
-        <Link to="/seguimiento">Consulta aquí con tu código</Link>
-      </p>
+          <p className="auth-footer">
+            ¿Eres cliente? <Link to="/seguimiento">Consulta el estado de tu reparación</Link>
+          </p>
+          </div>
+        </section>
+      </div>
     </div>
   );
 }

@@ -77,45 +77,48 @@ function ClienteArticuloPicker({ onArticuloSeleccionado }) {
   }
 
   return (
-    <div style={{ border: '1px dashed #888', padding: '12px', marginBottom: '16px' }}>
-      <h3>1. Buscar cliente</h3>
-      <div>
+    <div className="picker-card card shadow-sm rounded-3 border-0">
+      <div className="card-body p-4">
+      <h3 className="h5 border-start border-4 ps-3">1. Buscar cliente</h3>
+      <div className="input-group mb-3">
         <input
+          className="form-control"
           type="text"
           placeholder="Nombre o teléfono del cliente"
           value={busqueda}
           onChange={(e) => setBusqueda(e.target.value)}
           style={{ width: '60%', marginRight: '8px' }}
         />
-        <button type="button" onClick={buscarClientes}>Buscar</button>
+        <button className="btn btn-primary" type="button" onClick={buscarClientes}>Buscar</button>
       </div>
 
-      {error && <p style={{ color: 'red' }}>{error}</p>}
+      {error && <p className="alert alert-danger">{error}</p>}
 
       {clientes.length > 0 && (
-        <ul>
+        <ul className="list-group list-group-flush mb-3">
           {clientes.map((c) => (
-            <li key={c.id}>
+            <li className="list-group-item px-0 d-flex justify-content-between align-items-center" key={c.id}>
               {c.nombre} ({c.telefono}){' '}
-              <button type="button" onClick={() => seleccionarCliente(c)}>Seleccionar</button>
+              <button className="btn btn-outline-primary btn-sm" type="button" onClick={() => seleccionarCliente(c)}>Seleccionar</button>
             </li>
           ))}
         </ul>
       )}
 
-      <button type="button" onClick={() => setCreandoNuevo(true)} style={{ marginTop: '8px' }}>
+      <button className="btn btn-outline-secondary mt-2" type="button" onClick={() => setCreandoNuevo(true)}>
         Cliente nuevo (no encontrado)
       </button>
 
       {clienteSeleccionado && !creandoNuevo && (
-        <div style={{ marginTop: '16px' }}>
-          <h3>2. Artículos de {clienteSeleccionado.nombre}</h3>
+        <div className="mt-4">
+          <h3 className="h5 border-start border-4 ps-3">2. Artículos de {clienteSeleccionado.nombre}</h3>
           {articulos.length === 0 && <p>Este cliente no tiene artículos registrados aún.</p>}
-          <ul>
+          <ul className="list-group list-group-flush mb-3">
             {articulos.map((a) => (
-              <li key={a.id}>
+              <li className="list-group-item px-0 d-flex justify-content-between align-items-center" key={a.id}>
                 {a.tipo} {a.marca} {a.modelo}{' '}
                 <button
+                  className="btn btn-outline-primary btn-sm"
                   type="button"
                   onClick={() => onArticuloSeleccionado(a.id, `${a.tipo} ${a.marca} - ${clienteSeleccionado.nombre}`)}
                 >
@@ -124,22 +127,24 @@ function ClienteArticuloPicker({ onArticuloSeleccionado }) {
               </li>
             ))}
           </ul>
-          <button type="button" onClick={() => setCreandoNuevo(true)}>Agregar artículo nuevo para este cliente</button>
+          <button className="btn btn-outline-secondary" type="button" onClick={() => setCreandoNuevo(true)}>Agregar artículo nuevo para este cliente</button>
         </div>
       )}
 
       {creandoNuevo && (
-        <div style={{ marginTop: '16px' }}>
-          <h3>Datos nuevos</h3>
+        <div className="mt-4">
+          <h3 className="h5 border-start border-4 ps-3">Datos nuevos</h3>
           {!clienteSeleccionado && (
             <>
               <input
+                className="form-control mb-2"
                 placeholder="Nombre del cliente"
                 value={nuevoCliente.nombre}
                 onChange={(e) => setNuevoCliente({ ...nuevoCliente, nombre: e.target.value })}
                 style={{ display: 'block', marginBottom: '6px', width: '100%' }}
               />
               <input
+                className="form-control mb-2"
                 placeholder="Teléfono"
                 value={nuevoCliente.telefono}
                 onChange={(e) => setNuevoCliente({ ...nuevoCliente, telefono: e.target.value })}
@@ -148,34 +153,39 @@ function ClienteArticuloPicker({ onArticuloSeleccionado }) {
             </>
           )}
           <input
+            className="form-control mb-2"
             placeholder="Tipo (taladro, pulidora...)"
             value={nuevoArticulo.tipo}
             onChange={(e) => setNuevoArticulo({ ...nuevoArticulo, tipo: e.target.value })}
             style={{ display: 'block', marginBottom: '6px', width: '100%' }}
           />
           <input
+            className="form-control mb-2"
             placeholder="Marca"
             value={nuevoArticulo.marca}
             onChange={(e) => setNuevoArticulo({ ...nuevoArticulo, marca: e.target.value })}
             style={{ display: 'block', marginBottom: '6px', width: '100%' }}
           />
           <input
+            className="form-control mb-2"
             placeholder="Modelo"
             value={nuevoArticulo.modelo}
             onChange={(e) => setNuevoArticulo({ ...nuevoArticulo, modelo: e.target.value })}
             style={{ display: 'block', marginBottom: '6px', width: '100%' }}
           />
           <input
+            className="form-control mb-2"
             placeholder="Serial"
             value={nuevoArticulo.serial}
             onChange={(e) => setNuevoArticulo({ ...nuevoArticulo, serial: e.target.value })}
             style={{ display: 'block', marginBottom: '6px', width: '100%' }}
           />
-          <button type="button" onClick={crearClienteYArticulo}>
+          <button className="btn btn-primary" type="button" onClick={crearClienteYArticulo}>
             {clienteSeleccionado ? 'Crear artículo' : 'Crear cliente y artículo'}
           </button>
         </div>
       )}
+      </div>
     </div>
   );
 }

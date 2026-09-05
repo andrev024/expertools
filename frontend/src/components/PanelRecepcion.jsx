@@ -77,9 +77,9 @@ function PanelRecepcion() {
   }
 
   return (
-    <div>
-      <h2>Crear nueva orden</h2>
-      <form onSubmit={crearOrden} style={{ marginBottom: '24px' }}>
+    <div className="operations-panel">
+      <h2 className="h4 border-start border-4 ps-3">Crear nueva orden</h2>
+      <form onSubmit={crearOrden} className="card card-body shadow-sm rounded-3 border-0 mb-4">
         <ClienteArticuloPicker
           onArticuloSeleccionado={(id, descripcion) => {
             setArticuloId(id);
@@ -88,12 +88,13 @@ function PanelRecepcion() {
         />
 
         {articuloId && (
-          <p style={{ color: 'lightgreen' }}>Artículo seleccionado: {articuloDescripcion}</p>
+          <p className="alert alert-success py-2">Artículo seleccionado: {articuloDescripcion}</p>
         )}
 
         <div>
-          <label>Tipo</label>
+          <label className="form-label fw-semibold">Tipo</label>
           <select
+            className="form-select mb-3"
             value={tipo}
             onChange={(e) => setTipo(e.target.value)}
             style={{ display: 'block', marginBottom: '8px' }}
@@ -102,22 +103,19 @@ function PanelRecepcion() {
             <option value="garantia">Garantía</option>
           </select>
         </div>
-        <button type="submit" disabled={!articuloId}>Crear orden</button>
+        <button className="button button-primary btn btn-primary" type="submit" disabled={!articuloId}>Crear orden</button>
       </form>
 
-      {mensajeExito && <p style={{ color: 'green' }}>{mensajeExito}</p>}
-      {error && <p style={{ color: 'red' }}>{error}</p>}
+      {mensajeExito && <p className="alert alert-success">{mensajeExito}</p>}
+      {error && <p className="alert alert-danger">{error}</p>}
 
-      <h2>Acciones pendientes (entrega)</h2>
+      <h2 className="h4 border-start border-4 ps-3">Acciones pendientes (entrega)</h2>
       {ordenes
         .filter((o) => ACCIONES_RECEPCION[o.estado_actual])
         .map((orden) => (
-          <div
-            key={orden.id}
-            style={{ border: '1px solid #ccc', padding: '12px', margin: '8px 0', borderRadius: '6px' }}
-          >
-            <h3>{orden.codigo_seguimiento}</h3>
-            <p>Cliente: {orden.cliente_nombre} — Estado: <strong>{orden.estado_actual}</strong></p>
+          <div key={orden.id} className="order-card card shadow-sm rounded-3 border-0">
+            <h3 className="h5">{orden.codigo_seguimiento}</h3>
+            <p>Cliente: {orden.cliente_nombre} — Estado: <strong className="badge rounded-pill bg-success-subtle text-success">{orden.estado_actual}</strong></p>
             <input
               type="text"
               placeholder="Comentario"
@@ -127,6 +125,7 @@ function PanelRecepcion() {
             />
             {ACCIONES_RECEPCION[orden.estado_actual].map((siguienteEstado) => (
               <button
+                className="button button-primary btn btn-primary"
                 key={siguienteEstado}
                 onClick={() => cambiarEstado(orden.id, siguienteEstado)}
                 style={{ marginRight: '8px' }}
@@ -137,18 +136,18 @@ function PanelRecepcion() {
           </div>
         ))}
 
-      <h2>Todas las órdenes</h2>
+      <h2 className="h4 border-start border-4 ps-3">Todas las órdenes</h2>
       {cargando ? (
         <p>Cargando...</p>
       ) : (
-        <table border="1" cellPadding="8" style={{ borderCollapse: 'collapse', width: '100%' }}>
+        <table className="orders-table table table-hover table-striped align-middle">
           <thead>
             <tr>
-              <th>Código</th>
-              <th>Artículo</th>
-              <th>Cliente</th>
-              <th>Estado</th>
-              <th>Tipo</th>
+              <th className="fw-semibold">Código</th>
+              <th className="fw-semibold">Artículo</th>
+              <th className="fw-semibold">Cliente</th>
+              <th className="fw-semibold">Estado</th>
+              <th className="fw-semibold">Tipo</th>
             </tr>
           </thead>
           <tbody>
@@ -157,7 +156,7 @@ function PanelRecepcion() {
                 <td>{orden.codigo_seguimiento}</td>
                 <td>{orden.articulo_tipo} {orden.marca}</td>
                 <td>{orden.cliente_nombre}</td>
-                <td>{orden.estado_actual}</td>
+                <td><span className="badge rounded-pill bg-success-subtle text-success">{orden.estado_actual}</span></td>
                 <td>{orden.tipo}</td>
               </tr>
             ))}
