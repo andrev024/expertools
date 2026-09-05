@@ -1,9 +1,5 @@
--- Datos de prueba (seed): usuarios y datos base para poder probar el sistema
--- recien levantado, sin tener que crearlos a mano cada vez.
---
--- Password para AMBOS usuarios de prueba: 123456
--- (el hash de abajo corresponde a esa contraseña, ya verificado)
-USE taller_tracker;
+-- Datos de prueba. NO selecciona base de datos por nombre (ver nota en schema.sql).
+-- Password para ambos usuarios de prueba: 123456
 
 INSERT INTO usuario (nombre, email, password_hash, rol) VALUES
 ('Admin Prueba', 'admin@test.com', '$2y$10$Vnuxoi/43pcVsoHLoICCzuMVZ.83A4FrbXZWNc9K10S/9/Oc8UfHG', 'recepcion'),

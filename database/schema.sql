@@ -1,16 +1,10 @@
 -- Schema v2: Sistema de trazabilidad de reparaciones
 -- Motor: MySQL 8+
--- Cambios respecto a v1: cotizacion ahora la hace el tecnico (repuestos, dictamen,
--- canal de aprobacion), y orden_servicio trackea intentos de contacto al cliente.
+-- NOTA: este script NO crea ni selecciona una base de datos por nombre --
+-- se ejecuta sobre la base de datos que ya este seleccionada/conectada
+-- (defaultdb en Aiven, taller_tracker en Docker local, etc). Esto lo hace
+-- portable entre distintos proveedores sin tener que editar el script.
 
-CREATE DATABASE IF NOT EXISTS taller_tracker
-  CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-
-USE taller_tracker;
-
--- ============================================
--- USUARIO
--- ============================================
 CREATE TABLE IF NOT EXISTS usuario (
     id INT AUTO_INCREMENT PRIMARY KEY,
     nombre VARCHAR(100) NOT NULL,
@@ -20,9 +14,6 @@ CREATE TABLE IF NOT EXISTS usuario (
     creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- ============================================
--- CLIENTE
--- ============================================
 CREATE TABLE IF NOT EXISTS cliente (
     id INT AUTO_INCREMENT PRIMARY KEY,
     nombre VARCHAR(150) NOT NULL,
@@ -31,9 +22,6 @@ CREATE TABLE IF NOT EXISTS cliente (
     creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- ============================================
--- ARTICULO
--- ============================================
 CREATE TABLE IF NOT EXISTS articulo (
     id INT AUTO_INCREMENT PRIMARY KEY,
     cliente_id INT NOT NULL,
@@ -45,9 +33,6 @@ CREATE TABLE IF NOT EXISTS articulo (
     FOREIGN KEY (cliente_id) REFERENCES cliente(id)
 );
 
--- ============================================
--- ORDEN_SERVICIO
--- ============================================
 CREATE TABLE IF NOT EXISTS orden_servicio (
     id INT AUTO_INCREMENT PRIMARY KEY,
     codigo_seguimiento VARCHAR(20) NOT NULL UNIQUE,
@@ -56,11 +41,7 @@ CREATE TABLE IF NOT EXISTS orden_servicio (
     orden_original_id INT NULL,
     tecnico_asignado_id INT NULL,
     estado_actual VARCHAR(50) NOT NULL DEFAULT 'recibido',
-
-    -- NUEVO en v2: contador de intentos de contacto al cliente para la cotizacion.
-    -- Al llegar a 3 sin respuesta, la orden pasa a estado 'sin_respuesta'.
     intentos_contacto_cliente INT NOT NULL DEFAULT 0,
-
     fecha_ingreso TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     fecha_entrega TIMESTAMP NULL,
     FOREIGN KEY (articulo_id) REFERENCES articulo(id),
@@ -69,31 +50,19 @@ CREATE TABLE IF NOT EXISTS orden_servicio (
     INDEX idx_codigo_seguimiento (codigo_seguimiento)
 );
 
--- ============================================
--- COTIZACION (v2: ahora la arma el tecnico, con repuestos + dictamen)
--- ============================================
 CREATE TABLE IF NOT EXISTS cotizacion (
     id INT AUTO_INCREMENT PRIMARY KEY,
     orden_id INT NOT NULL,
-
-    -- NUEVO en v2: lo que antes no existia, ahora capturado explicitamente.
-    repuestos TEXT,       -- referencias, cantidades y descripcion del repuesto
-    dictamen TEXT,        -- diagnostico del tecnico: que fallo y por que
-
+    repuestos TEXT,
+    dictamen TEXT,
     monto DECIMAL(10,2) NOT NULL,
-
-    -- NUEVO en v2: por cual canal se le informo/aprobo al cliente
     canal_aprobacion ENUM('presencial', 'whatsapp') NULL,
-
     estado ENUM('pendiente', 'aprobada', 'rechazada', 'sin_respuesta') NOT NULL DEFAULT 'pendiente',
     fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     fecha_respuesta TIMESTAMP NULL,
     FOREIGN KEY (orden_id) REFERENCES orden_servicio(id)
 );
 
--- ============================================
--- HISTORIAL_ESTADO
--- ============================================
 CREATE TABLE IF NOT EXISTS historial_estado (
     id INT AUTO_INCREMENT PRIMARY KEY,
     orden_id INT NOT NULL,
@@ -106,9 +75,6 @@ CREATE TABLE IF NOT EXISTS historial_estado (
     INDEX idx_orden (orden_id)
 );
 
--- ============================================
--- NOTIFICACION
--- ============================================
 CREATE TABLE IF NOT EXISTS notificacion (
     id INT AUTO_INCREMENT PRIMARY KEY,
     orden_id INT NOT NULL,
