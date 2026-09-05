@@ -82,8 +82,7 @@ function listarOrdenes(\PDO $pdo): void
 {
     try {
         $stmt = $pdo->query(
-            'SELECT os.id, os.codigo_seguimiento, os.tipo, os.estado_actual, os.fecha_ingreso,
-                    os.intentos_contacto_cliente,
+                'SELECT os.id, os.codigo_seguimiento, os.tipo, os.estado_actual, os.fecha_ingreso,
                     a.tipo AS articulo_tipo, a.marca, a.modelo,
                     c.nombre AS cliente_nombre, c.telefono AS cliente_telefono
              FROM orden_servicio os

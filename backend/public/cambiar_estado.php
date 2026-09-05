@@ -65,13 +65,7 @@ try {
         exit;
     }
 
-    if ($estadoActual === 'sin_respuesta' && $nuevoEstado === 'en_diagnostico') {
-        $stmtUpdate = $pdo->prepare(
-            'UPDATE orden_servicio SET estado_actual = ?, intentos_contacto_cliente = 0 WHERE id = ?'
-        );
-    } else {
-        $stmtUpdate = $pdo->prepare('UPDATE orden_servicio SET estado_actual = ? WHERE id = ?');
-    }
+    $stmtUpdate = $pdo->prepare('UPDATE orden_servicio SET estado_actual = ? WHERE id = ?');
     $stmtUpdate->execute([$nuevoEstado, $ordenId]);
 
     if ($nuevoEstado === 'entregado') {

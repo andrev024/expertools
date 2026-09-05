@@ -1,14 +1,7 @@
 import { useState } from 'react';
 import { apiFetch } from '../api';
+import { CATALOGO_ARTICULOS, TIPOS_DISPONIBLES } from '../catalogoArticulos';
 
-// Este componente le devuelve al padre un articulo_id ya resuelto,
-// via la funcion onArticuloSeleccionado que recibe como prop.
-//
-// IMPORTANTE: este componente vive DENTRO de otro <form> (el de crearOrden
-// en PanelRecepcion), asi que aqui NUNCA usamos <form>/onSubmit -- los
-// formularios anidados son invalidos en HTML y el navegador los "aplana",
-// haciendo que los botones internos disparen el submit del formulario externo
-// por error. En su lugar, usamos <div> + botones type="button" con onClick.
 function ClienteArticuloPicker({ onArticuloSeleccionado }) {
   const [busqueda, setBusqueda] = useState('');
   const [clientes, setClientes] = useState([]);
@@ -18,7 +11,42 @@ function ClienteArticuloPicker({ onArticuloSeleccionado }) {
 
   const [creandoNuevo, setCreandoNuevo] = useState(false);
   const [nuevoCliente, setNuevoCliente] = useState({ nombre: '', telefono: '' });
-  const [nuevoArticulo, setNuevoArticulo] = useState({ tipo: '', marca: '', modelo: '', serial: '' });
+
+  // Estado del formulario de articulo, ahora con seleccion en cascada
+  const [tipoSeleccionado, setTipoSeleccionado] = useState('');
+  const [marcaSeleccionada, setMarcaSeleccionada] = useState('');
+  const [modeloSeleccionado, setModeloSeleccionado] = useState('');
+  const [serial, setSerial] = useState('');
+
+  // Campos de texto libre, solo visibles si se elige "Otro" en tipo/marca/modelo
+  const [tipoLibre, setTipoLibre] = useState('');
+  const [marcaLibre, setMarcaLibre] = useState('');
+  const [modeloLibre, setModeloLibre] = useState('');
+
+  // Marcas disponibles dependen del tipo elegido (mas la opcion "Otra")
+  const marcasDisponibles = tipoSeleccionado && CATALOGO_ARTICULOS[tipoSeleccionado]
+    ? [...Object.keys(CATALOGO_ARTICULOS[tipoSeleccionado]), 'Otra']
+    : ['Otra'];
+
+  // Modelos disponibles dependen del tipo Y la marca elegidos
+  const modelosDisponibles = tipoSeleccionado && marcaSeleccionada && CATALOGO_ARTICULOS[tipoSeleccionado]?.[marcaSeleccionada]
+    ? [...CATALOGO_ARTICULOS[tipoSeleccionado][marcaSeleccionada], 'Otro']
+    : ['Otro'];
+
+  function manejarCambioTipo(valor) {
+    setTipoSeleccionado(valor);
+    // Al cambiar el tipo, reseteamos marca y modelo (ya no son validos para el nuevo tipo)
+    setMarcaSeleccionada('');
+    setModeloSeleccionado('');
+    setMarcaLibre('');
+    setModeloLibre('');
+  }
+
+  function manejarCambioMarca(valor) {
+    setMarcaSeleccionada(valor);
+    setModeloSeleccionado('');
+    setModeloLibre('');
+  }
 
   async function buscarClientes() {
     setError('');
@@ -44,11 +72,15 @@ function ClienteArticuloPicker({ onArticuloSeleccionado }) {
   async function crearClienteYArticulo() {
     setError('');
 
+    const tipoFinal = tipoSeleccionado === 'Otro' ? tipoLibre : tipoSeleccionado;
+    const marcaFinal = marcaSeleccionada === 'Otra' ? marcaLibre : marcaSeleccionada;
+    const modeloFinal = modeloSeleccionado === 'Otro' ? modeloLibre : modeloSeleccionado;
+
     if (!clienteSeleccionado && (!nuevoCliente.nombre || !nuevoCliente.telefono)) {
       setError('Nombre y teléfono del cliente son requeridos');
       return;
     }
-    if (!nuevoArticulo.tipo) {
+    if (!tipoFinal) {
       setError('El tipo de artículo es requerido');
       return;
     }
@@ -66,59 +98,62 @@ function ClienteArticuloPicker({ onArticuloSeleccionado }) {
 
       const articulo = await apiFetch('articulos.php', {
         method: 'POST',
-        body: JSON.stringify({ ...nuevoArticulo, cliente_id: clienteId }),
+        body: JSON.stringify({
+          cliente_id: clienteId,
+          tipo: tipoFinal,
+          marca: marcaFinal,
+          modelo: modeloFinal,
+          serial,
+        }),
       });
 
       const nombreClienteMostrar = clienteSeleccionado?.nombre || nuevoCliente.nombre;
-      onArticuloSeleccionado(articulo.id, `${nuevoArticulo.tipo} ${nuevoArticulo.marca} - ${nombreClienteMostrar}`);
+      onArticuloSeleccionado(articulo.id, `${tipoFinal} ${marcaFinal} - ${nombreClienteMostrar}`);
     } catch (err) {
       setError(err.message);
     }
   }
 
   return (
-    <div className="picker-card card shadow-sm rounded-3 border-0">
-      <div className="card-body p-4">
-      <h3 className="h5 border-start border-4 ps-3">1. Buscar cliente</h3>
-      <div className="input-group mb-3">
+    <div style={{ border: '1px dashed #888', padding: '12px', marginBottom: '16px' }}>
+      <h3>1. Buscar cliente</h3>
+      <div>
         <input
-          className="form-control"
           type="text"
           placeholder="Nombre o teléfono del cliente"
           value={busqueda}
           onChange={(e) => setBusqueda(e.target.value)}
           style={{ width: '60%', marginRight: '8px' }}
         />
-        <button className="btn btn-primary" type="button" onClick={buscarClientes}>Buscar</button>
+        <button type="button" onClick={buscarClientes}>Buscar</button>
       </div>
 
-      {error && <p className="alert alert-danger">{error}</p>}
+      {error && <p style={{ color: 'red' }}>{error}</p>}
 
       {clientes.length > 0 && (
-        <ul className="list-group list-group-flush mb-3">
+        <ul>
           {clientes.map((c) => (
-            <li className="list-group-item px-0 d-flex justify-content-between align-items-center" key={c.id}>
+            <li key={c.id}>
               {c.nombre} ({c.telefono}){' '}
-              <button className="btn btn-outline-primary btn-sm" type="button" onClick={() => seleccionarCliente(c)}>Seleccionar</button>
+              <button type="button" onClick={() => seleccionarCliente(c)}>Seleccionar</button>
             </li>
           ))}
         </ul>
       )}
 
-      <button className="btn btn-outline-secondary mt-2" type="button" onClick={() => setCreandoNuevo(true)}>
+      <button type="button" onClick={() => setCreandoNuevo(true)} style={{ marginTop: '8px' }}>
         Cliente nuevo (no encontrado)
       </button>
 
       {clienteSeleccionado && !creandoNuevo && (
-        <div className="mt-4">
-          <h3 className="h5 border-start border-4 ps-3">2. Artículos de {clienteSeleccionado.nombre}</h3>
+        <div style={{ marginTop: '16px' }}>
+          <h3>2. Artículos de {clienteSeleccionado.nombre}</h3>
           {articulos.length === 0 && <p>Este cliente no tiene artículos registrados aún.</p>}
-          <ul className="list-group list-group-flush mb-3">
+          <ul>
             {articulos.map((a) => (
-              <li className="list-group-item px-0 d-flex justify-content-between align-items-center" key={a.id}>
+              <li key={a.id}>
                 {a.tipo} {a.marca} {a.modelo}{' '}
                 <button
-                  className="btn btn-outline-primary btn-sm"
                   type="button"
                   onClick={() => onArticuloSeleccionado(a.id, `${a.tipo} ${a.marca} - ${clienteSeleccionado.nombre}`)}
                 >
@@ -127,24 +162,22 @@ function ClienteArticuloPicker({ onArticuloSeleccionado }) {
               </li>
             ))}
           </ul>
-          <button className="btn btn-outline-secondary" type="button" onClick={() => setCreandoNuevo(true)}>Agregar artículo nuevo para este cliente</button>
+          <button type="button" onClick={() => setCreandoNuevo(true)}>Agregar artículo nuevo para este cliente</button>
         </div>
       )}
 
       {creandoNuevo && (
-        <div className="mt-4">
-          <h3 className="h5 border-start border-4 ps-3">Datos nuevos</h3>
+        <div style={{ marginTop: '16px' }}>
+          <h3>Datos nuevos</h3>
           {!clienteSeleccionado && (
             <>
               <input
-                className="form-control mb-2"
                 placeholder="Nombre del cliente"
                 value={nuevoCliente.nombre}
                 onChange={(e) => setNuevoCliente({ ...nuevoCliente, nombre: e.target.value })}
                 style={{ display: 'block', marginBottom: '6px', width: '100%' }}
               />
               <input
-                className="form-control mb-2"
                 placeholder="Teléfono"
                 value={nuevoCliente.telefono}
                 onChange={(e) => setNuevoCliente({ ...nuevoCliente, telefono: e.target.value })}
@@ -152,40 +185,90 @@ function ClienteArticuloPicker({ onArticuloSeleccionado }) {
               />
             </>
           )}
+
+          {/* Selector de TIPO */}
+          <label>Tipo de artículo</label>
+          <select
+            value={tipoSeleccionado}
+            onChange={(e) => manejarCambioTipo(e.target.value)}
+            style={{ display: 'block', marginBottom: '6px', width: '100%' }}
+          >
+            <option value="">-- Selecciona --</option>
+            {TIPOS_DISPONIBLES.map((t) => (
+              <option key={t} value={t}>{t}</option>
+            ))}
+          </select>
+          {tipoSeleccionado === 'Otro' && (
+            <input
+              placeholder="Especifica el tipo"
+              value={tipoLibre}
+              onChange={(e) => setTipoLibre(e.target.value)}
+              style={{ display: 'block', marginBottom: '6px', width: '100%' }}
+            />
+          )}
+
+          {/* Selector de MARCA -- solo aparece si ya se eligio un tipo */}
+          {tipoSeleccionado && (
+            <>
+              <label>Marca</label>
+              <select
+                value={marcaSeleccionada}
+                onChange={(e) => manejarCambioMarca(e.target.value)}
+                style={{ display: 'block', marginBottom: '6px', width: '100%' }}
+              >
+                <option value="">-- Selecciona --</option>
+                {marcasDisponibles.map((m) => (
+                  <option key={m} value={m}>{m}</option>
+                ))}
+              </select>
+              {marcaSeleccionada === 'Otra' && (
+                <input
+                  placeholder="Especifica la marca"
+                  value={marcaLibre}
+                  onChange={(e) => setMarcaLibre(e.target.value)}
+                  style={{ display: 'block', marginBottom: '6px', width: '100%' }}
+                />
+              )}
+            </>
+          )}
+
+          {/* Selector de MODELO -- solo aparece si ya se eligio marca */}
+          {marcaSeleccionada && (
+            <>
+              <label>Modelo</label>
+              <select
+                value={modeloSeleccionado}
+                onChange={(e) => setModeloSeleccionado(e.target.value)}
+                style={{ display: 'block', marginBottom: '6px', width: '100%' }}
+              >
+                <option value="">-- Selecciona --</option>
+                {modelosDisponibles.map((m) => (
+                  <option key={m} value={m}>{m}</option>
+                ))}
+              </select>
+              {modeloSeleccionado === 'Otro' && (
+                <input
+                  placeholder="Especifica el modelo"
+                  value={modeloLibre}
+                  onChange={(e) => setModeloLibre(e.target.value)}
+                  style={{ display: 'block', marginBottom: '6px', width: '100%' }}
+                />
+              )}
+            </>
+          )}
+
           <input
-            className="form-control mb-2"
-            placeholder="Tipo (taladro, pulidora...)"
-            value={nuevoArticulo.tipo}
-            onChange={(e) => setNuevoArticulo({ ...nuevoArticulo, tipo: e.target.value })}
+            placeholder="Serial (opcional)"
+            value={serial}
+            onChange={(e) => setSerial(e.target.value)}
             style={{ display: 'block', marginBottom: '6px', width: '100%' }}
           />
-          <input
-            className="form-control mb-2"
-            placeholder="Marca"
-            value={nuevoArticulo.marca}
-            onChange={(e) => setNuevoArticulo({ ...nuevoArticulo, marca: e.target.value })}
-            style={{ display: 'block', marginBottom: '6px', width: '100%' }}
-          />
-          <input
-            className="form-control mb-2"
-            placeholder="Modelo"
-            value={nuevoArticulo.modelo}
-            onChange={(e) => setNuevoArticulo({ ...nuevoArticulo, modelo: e.target.value })}
-            style={{ display: 'block', marginBottom: '6px', width: '100%' }}
-          />
-          <input
-            className="form-control mb-2"
-            placeholder="Serial"
-            value={nuevoArticulo.serial}
-            onChange={(e) => setNuevoArticulo({ ...nuevoArticulo, serial: e.target.value })}
-            style={{ display: 'block', marginBottom: '6px', width: '100%' }}
-          />
-          <button className="btn btn-primary" type="button" onClick={crearClienteYArticulo}>
+
+          <button type="button" onClick={crearClienteYArticulo}>
             {clienteSeleccionado ? 'Crear artículo' : 'Crear cliente y artículo'}
           </button>
         </div>
       )}
-      </div>
     </div>
   );
 }

@@ -35,7 +35,7 @@ Un taller de reparación de herramientas eléctricas llevaba el control de sus �
 
 - Registra cada artículo que ingresa (mantenimiento o garantía)
 - Permite al técnico diagnosticar, cotizar (repuestos, dictamen, precio) y reparar
-- Registra la respuesta del cliente a la cotización (aprobada, rechazada, o sin respuesta tras 3 intentos de contacto)
+- Registra la respuesta del cliente a la cotización (aprobada, no aprobada o pendiente de respuesta)
 - Deja un historial de trazabilidad completo, con fecha y usuario responsable de cada cambio
 - Expone una página pública donde el cliente consulta el estado con un código, sin necesidad de cuenta
 
@@ -92,7 +92,6 @@ erDiagram
         string codigo_seguimiento
         string tipo
         string estado_actual
-        int intentos_contacto_cliente
     }
     Cotizacion {
         int id
@@ -119,8 +118,7 @@ stateDiagram-v2
     EnDiagnostico --> Chatarra : irreparable
     EnDiagnostico --> Cotizado : tecnico registra repuestos + dictamen + precio
     Cotizado --> EnReparacion : cliente aprueba (presencial o WhatsApp)
-    Cotizado --> NoAutorizado : cliente rechaza
-    Cotizado --> SinRespuesta : 3 intentos de contacto fallidos
+    Cotizado --> NoAutorizado : cliente no aprueba
     EnReparacion --> EsperandoRepuesto : falta repuesto
     EsperandoRepuesto --> EnReparacion : llega repuesto
     EnReparacion --> FinalizadoTecnico

@@ -77,6 +77,29 @@ function PanelTecnico() {
     });
   }
 
+  function obtenerRepuestos(ordenId) {
+    return formsCotizacion[ordenId]?.repuestos || [{ referencia: '', cantidad: 1, descripcion: '' }];
+  }
+
+  function actualizarRepuesto(ordenId, indice, campo, valor) {
+    const repuestos = obtenerRepuestos(ordenId).map((repuesto, posicion) => (
+      posicion === indice ? { ...repuesto, [campo]: valor } : repuesto
+    ));
+    actualizarFormCotizacion(ordenId, 'repuestos', repuestos);
+  }
+
+  function agregarRepuesto(ordenId) {
+    actualizarFormCotizacion(ordenId, 'repuestos', [
+      ...obtenerRepuestos(ordenId),
+      { referencia: '', cantidad: 1, descripcion: '' },
+    ]);
+  }
+
+  function quitarRepuesto(ordenId, indice) {
+    const repuestos = obtenerRepuestos(ordenId).filter((_, posicion) => posicion !== indice);
+    actualizarFormCotizacion(ordenId, 'repuestos', repuestos.length ? repuestos : [{ referencia: '', cantidad: 1, descripcion: '' }]);
+  }
+
   async function enviarCotizacion(ordenId) {
     setError('');
     const form = formsCotizacion[ordenId] || {};
@@ -91,7 +114,7 @@ function PanelTecnico() {
         method: 'POST',
         body: JSON.stringify({
           orden_id: ordenId,
-          repuestos: form.repuestos || '',
+          repuestos: JSON.stringify((form.repuestos || []).filter((repuesto) => repuesto.referencia.trim())),
           dictamen: form.dictamen,
           monto: Number(form.monto),
         }),
@@ -99,15 +122,16 @@ function PanelTecnico() {
       const telefono = String(orden?.cliente_telefono || '').replace(/\D/g, '');
       const telefonoWhatsapp = telefono.length === 10 && telefono.startsWith('3') ? `57${telefono}` : telefono;
       const mensaje = [
-        `Hola ${orden?.cliente_nombre || 'cliente'}, te enviamos la cotización de tu servicio.`,
+        `👋 Hola ${orden?.cliente_nombre || 'cliente'}, te contactamos desde Expertools.`,
+        '🧾 Te enviamos la cotización de tu servicio:',
         '',
-        `Orden: ${orden?.codigo_seguimiento || ordenId}`,
-        `Artículo: ${orden?.articulo_tipo || ''}${orden?.marca ? ` ${orden.marca}` : ''}${orden?.modelo ? ` ${orden.modelo}` : ''}`,
-        `Diagnóstico: ${form.dictamen}`,
-        `Repuestos: ${form.repuestos || 'No requiere repuestos'}`,
-        `Valor total: $${Number(form.monto).toLocaleString('es-CO')}`,
+        `🔖 Código de seguimiento: ${orden?.codigo_seguimiento || ordenId}`,
+        `🔧 Artículo: ${orden?.articulo_tipo || ''}${orden?.marca ? ` ${orden.marca}` : ''}${orden?.modelo ? ` ${orden.modelo}` : ''}`,
+        `🔍 Diagnóstico: ${form.dictamen}`,
+        `🧩 Repuestos: ${form.repuestos?.filter((repuesto) => repuesto.referencia.trim()).map((repuesto) => `${repuesto.referencia} (x${repuesto.cantidad})${repuesto.descripcion ? `: ${repuesto.descripcion}` : ''}`).join(', ') || 'No requiere repuestos'}`,
+        `💰 Valor total: $${Number(form.monto).toLocaleString('es-CO')}`,
         '',
-        'Por favor confírmanos si autorizas la reparación.',
+        '✅ Por favor confírmanos si autorizas la reparación.',
       ].join('\n');
       window.open(`https://wa.me/${telefonoWhatsapp}?text=${encodeURIComponent(mensaje)}`, '_blank', 'noopener,noreferrer');
       cargarOrdenes();
@@ -162,13 +186,47 @@ function PanelTecnico() {
                 onChange={(e) => actualizarFormCotizacion(orden.id, 'dictamen', e.target.value)}
                 style={{ display: 'block', width: '100%', marginBottom: '6px' }}
               />
-              <input
-                className="form-control mb-2"
-                placeholder="Repuestos (referencia, cantidad, descripción)"
-                value={formsCotizacion[orden.id]?.repuestos || ''}
-                onChange={(e) => actualizarFormCotizacion(orden.id, 'repuestos', e.target.value)}
-                style={{ display: 'block', width: '100%', marginBottom: '6px' }}
-              />
+              <div className="mb-2">
+                <p className="mb-1"><strong>Repuestos</strong></p>
+                {obtenerRepuestos(orden.id).map((repuesto, indice) => (
+                  <div className="row g-2 mb-2" key={`${orden.id}-repuesto-${indice}`}>
+                    <div className="col-md-4">
+                      <input
+                        className="form-control"
+                        placeholder="Referencia"
+                        value={repuesto.referencia}
+                        onChange={(e) => actualizarRepuesto(orden.id, indice, 'referencia', e.target.value)}
+                      />
+                    </div>
+                    <div className="col-md-2">
+                      <input
+                        className="form-control"
+                        type="number"
+                        min="1"
+                        placeholder="Cantidad"
+                        value={repuesto.cantidad}
+                        onChange={(e) => actualizarRepuesto(orden.id, indice, 'cantidad', e.target.value)}
+                      />
+                    </div>
+                    <div className="col-md-4">
+                      <input
+                        className="form-control"
+                        placeholder="Descripción (opcional)"
+                        value={repuesto.descripcion}
+                        onChange={(e) => actualizarRepuesto(orden.id, indice, 'descripcion', e.target.value)}
+                      />
+                    </div>
+                    <div className="col-md-2">
+                      <button type="button" className="button button-secondary btn btn-outline-secondary w-100" onClick={() => quitarRepuesto(orden.id, indice)}>
+                        Quitar
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                <button type="button" className="button button-secondary btn btn-outline-secondary" onClick={() => agregarRepuesto(orden.id)}>
+                  Agregar repuesto
+                </button>
+              </div>
               <input
                 className="form-control mb-2"
                 type="number"
@@ -187,11 +245,10 @@ function PanelTecnico() {
           {/* Estado: cotizado -> registrar la respuesta del cliente */}
           {orden.estado_actual === 'cotizado' && (
             <div>
-              <p>Intentos de contacto por WhatsApp: {orden.intentos_contacto_cliente} / 3</p>
               <button className="button button-primary btn btn-primary" onClick={() => responderCliente(orden.id, 'aprobada')}>Cliente aprobó</button>{' '}
-              <button className="button button-danger btn btn-outline-danger" onClick={() => responderCliente(orden.id, 'rechazada')}>Cliente rechazó</button>{' '}
-              <button className="button button-secondary btn btn-outline-secondary" onClick={() => responderCliente(orden.id, 'intento_fallido')}>
-                Intento sin respuesta
+              <button className="button button-danger btn btn-outline-danger" onClick={() => responderCliente(orden.id, 'rechazada')}>Cliente no aprobó</button>{' '}
+              <button className="button button-secondary btn btn-outline-secondary" onClick={() => responderCliente(orden.id, 'en_espera')}>
+                En espera de respuesta
               </button>
             </div>
           )}

@@ -35,6 +35,23 @@ function PanelRecepcion() {
     cargarOrdenes();
   }, []);
 
+  function abrirAvisoEntrega(orden) {
+    const telefono = String(orden.cliente_telefono || '').replace(/\D/g, '');
+    const telefonoWhatsapp = telefono.length === 10 && telefono.startsWith('3') ? `57${telefono}` : telefono;
+    const mensaje = [
+      `👋 Hola ${orden.cliente_nombre}, te contactamos desde Expertools.`,
+      '🎉 ¡Tu equipo ya está listo para entregar!',
+      '',
+      `🔖 Código de seguimiento: ${orden.codigo_seguimiento}`,
+      `🔧 Artículo: ${orden.articulo_tipo}${orden.marca ? ` ${orden.marca}` : ''}${orden.modelo ? ` ${orden.modelo}` : ''}`,
+      '',
+      '📍 Puedes acercarte a recepción para recogerlo.',
+      '¡Te esperamos! 😊',
+    ].join('\n');
+
+    window.open(`https://wa.me/${telefonoWhatsapp}?text=${encodeURIComponent(mensaje)}`, '_blank', 'noopener,noreferrer');
+  }
+
   async function cambiarEstado(ordenId, nuevoEstado) {
     setError('');
     try {
@@ -46,6 +63,10 @@ function PanelRecepcion() {
           comentario: comentarios[ordenId] || '',
         }),
       });
+      if (nuevoEstado === 'listo_para_entregar') {
+        const orden = ordenes.find((item) => item.id === ordenId);
+        if (orden) abrirAvisoEntrega(orden);
+      }
       cargarOrdenes();
     } catch (err) {
       setError(err.message);

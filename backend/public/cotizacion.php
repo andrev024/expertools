@@ -94,7 +94,7 @@ function responderCotizacion(\PDO $pdo, object $usuarioAuth): void
 
     try {
         $stmt = $pdo->prepare(
-            'SELECT id, intentos_contacto_cliente FROM orden_servicio WHERE id = ? FOR UPDATE'
+            'SELECT id, estado_actual FROM orden_servicio WHERE id = ? FOR UPDATE'
         );
         $stmt->execute([$ordenId]);
         $orden = $stmt->fetch();
@@ -106,27 +106,9 @@ function responderCotizacion(\PDO $pdo, object $usuarioAuth): void
             return;
         }
 
-        if ($respuesta === 'intento_fallido') {
-            $nuevosIntentos = $orden['intentos_contacto_cliente'] + 1;
-            $pdo->prepare('UPDATE orden_servicio SET intentos_contacto_cliente = ? WHERE id = ?')
-                ->execute([$nuevosIntentos, $ordenId]);
-
-            if ($nuevosIntentos >= 3) {
-                $pdo->prepare("UPDATE orden_servicio SET estado_actual = 'sin_respuesta' WHERE id = ?")
-                    ->execute([$ordenId]);
-                $pdo->prepare(
-                    "INSERT INTO historial_estado (orden_id, estado, comentario, usuario_id)
-                     VALUES (?, 'sin_respuesta', 'Cliente no respondio tras 3 intentos', ?)"
-                )->execute([$ordenId, $usuarioAuth->sub]);
-            } else {
-                $pdo->prepare(
-                    "INSERT INTO historial_estado (orden_id, estado, comentario, usuario_id)
-                     VALUES (?, 'cotizado', ?, ?)"
-                )->execute([$ordenId, "Intento de contacto #{$nuevosIntentos} sin respuesta", $usuarioAuth->sub]);
-            }
-
+        if ($respuesta === 'en_espera') {
             $pdo->commit();
-            echo json_encode(['orden_id' => $ordenId, 'intentos' => $nuevosIntentos]);
+            echo json_encode(['orden_id' => $ordenId, 'estado_nuevo' => 'cotizado']);
             return;
         }
 
