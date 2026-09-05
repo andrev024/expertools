@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { apiFetch } from '../api';
+import { formatearEstado } from '../utils/textoUI';
 
 function Seguimiento({ embebido = false }) {
   const [codigo, setCodigo] = useState('');
@@ -64,7 +65,7 @@ function Seguimiento({ embebido = false }) {
                     </div>
                     <p className="mb-0">
                       <span className="text-secondary me-2">Estado actual:</span>
-                      <strong className="badge rounded-pill bg-success-subtle text-success">{resultado.estado_actual}</strong>
+                      <strong className="badge rounded-pill bg-success-subtle text-success">{formatearEstado(resultado.estado_actual)}</strong>
                     </p>
                   </div>
 
@@ -74,7 +75,7 @@ function Seguimiento({ embebido = false }) {
                       // Usamos el índice como key aquí porque estos pasos no tienen
                       // un id único propio, y la lista no se reordena ni edita.
                       <li key={index} className="list-group-item px-0 py-3 d-flex justify-content-between align-items-center gap-3">
-                        <span className="fw-medium">{paso.estado}</span>
+                        <span className="fw-medium">{formatearEstado(paso.estado)}</span>
                         <time className="small text-secondary text-nowrap">{paso.fecha}</time>
                       </li>
                     ))}

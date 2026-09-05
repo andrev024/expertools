@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { apiFetch } from '../api';
 import ClienteArticuloPicker from './ClienteArticuloPicker';
+import { formatearEstado, formatearTipoOrden } from '../utils/textoUI';
 
 // En v2, recepcion ya NO cotiza -- solo recibe y hace la entrega final.
 const ACCIONES_RECEPCION = {
@@ -115,7 +116,7 @@ function PanelRecepcion() {
         .map((orden) => (
           <div key={orden.id} className="order-card card shadow-sm rounded-3 border-0">
             <h3 className="h5">{orden.codigo_seguimiento}</h3>
-            <p>Cliente: {orden.cliente_nombre} — Estado: <strong className="badge rounded-pill bg-success-subtle text-success">{orden.estado_actual}</strong></p>
+            <p>Cliente: {orden.cliente_nombre} — Estado: <strong className="badge rounded-pill bg-success-subtle text-success">{formatearEstado(orden.estado_actual)}</strong></p>
             <input
               type="text"
               placeholder="Comentario"
@@ -130,7 +131,7 @@ function PanelRecepcion() {
                 onClick={() => cambiarEstado(orden.id, siguienteEstado)}
                 style={{ marginRight: '8px' }}
               >
-                Pasar a: {siguienteEstado}
+                Pasar a: {formatearEstado(siguienteEstado)}
               </button>
             ))}
           </div>
@@ -156,8 +157,8 @@ function PanelRecepcion() {
                 <td>{orden.codigo_seguimiento}</td>
                 <td>{orden.articulo_tipo} {orden.marca}</td>
                 <td>{orden.cliente_nombre}</td>
-                <td><span className="badge rounded-pill bg-success-subtle text-success">{orden.estado_actual}</span></td>
-                <td>{orden.tipo}</td>
+                <td><span className="badge rounded-pill bg-success-subtle text-success">{formatearEstado(orden.estado_actual)}</span></td>
+                <td>{formatearTipoOrden(orden.tipo)}</td>
               </tr>
             ))}
           </tbody>

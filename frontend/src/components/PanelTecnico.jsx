@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { apiFetch } from '../api';
+import { formatearEstado } from '../utils/textoUI';
 
 // Transiciones simples (via cambiar_estado.php) que no requieren formulario extra
 const TRANSICIONES_SIMPLES = {
@@ -131,7 +132,7 @@ function PanelTecnico() {
           <h3 className="h5">{orden.codigo_seguimiento}</h3>
           <p>Cliente: {orden.cliente_nombre} ({orden.cliente_telefono})</p>
           <p>Artículo: {orden.articulo_tipo} {orden.marca}</p>
-          <p>Estado actual: <strong className="badge rounded-pill bg-success-subtle text-success">{orden.estado_actual}</strong></p>
+          <p>Estado actual: <strong className="badge rounded-pill bg-success-subtle text-success">{formatearEstado(orden.estado_actual)}</strong></p>
 
           {/* Estado: recibido -> boton para tomar la orden */}
           {orden.estado_actual === 'recibido' && (
@@ -204,7 +205,7 @@ function PanelTecnico() {
               />
               {TRANSICIONES_SIMPLES[orden.estado_actual].map((siguiente) => (
                 <button className="button button-secondary btn btn-outline-secondary" key={siguiente} onClick={() => cambiarEstadoSimple(orden.id, siguiente)} style={{ marginRight: '8px' }}>
-                  Pasar a: {siguiente}
+                  Pasar a: {formatearEstado(siguiente)}
                 </button>
               ))}
             </div>

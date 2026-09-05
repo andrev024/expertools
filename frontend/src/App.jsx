@@ -4,6 +4,7 @@ import Login from './components/Login';
 import PanelRecepcion from './components/PanelRecepcion';
 import PanelTecnico from './components/PanelTecnico';
 import Seguimiento from './components/Seguimiento';
+import { formatearRol } from './utils/textoUI';
 
 function Marca() {
   return (
@@ -22,7 +23,7 @@ function Encabezado({ usuario, logout }) {
           <>
             <div className="user-chip">
               <span className="user-avatar">{usuario.nombre?.charAt(0).toUpperCase()}</span>
-              <span className="user-details"><b>{usuario.nombre}</b><small>{usuario.rol}</small></span>
+              <span className="user-details"><b>{usuario.nombre}</b><small>{formatearRol(usuario.rol)}</small></span>
             </div>
             <button className="button button-quiet btn btn-link" onClick={logout}>Cerrar sesión</button>
           </>
@@ -51,7 +52,7 @@ function Panel() {
       <Encabezado usuario={usuario} logout={logout} />
       <main className="page-content container">
         <div className="page-intro">
-          <span className="eyebrow text-uppercase fw-semibold">Expertools / {usuario.rol.toUpperCase()}</span>
+          <span className="eyebrow text-uppercase fw-semibold">Expertools / {formatearRol(usuario.rol)}</span>
           <h1 className="display-5 fw-semibold">Panel de operaciones</h1>
           <p className="page-lead text-secondary">Gestiona cada servicio con claridad, desde la recepción hasta la entrega.</p>
         </div>
