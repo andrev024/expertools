@@ -21,8 +21,6 @@ if ($metodo === 'POST') {
     echo json_encode(['error' => 'Método no permitido']);
 }
 
-// El técnico registra el diagnóstico completo: repuestos, dictamen, precio.
-// Esto mueve la orden de "en_diagnostico" a "cotizado" en un solo paso.
 function registrarCotizacion(\PDO $pdo, object $usuarioAuth): void
 {
     $datos = json_decode(file_get_contents('php://input'), true);
@@ -41,7 +39,6 @@ function registrarCotizacion(\PDO $pdo, object $usuarioAuth): void
     $pdo->beginTransaction();
 
     try {
-        // Verificamos que la orden esté en el estado correcto para cotizar
         $stmt = $pdo->prepare('SELECT estado_actual FROM orden_servicio WHERE id = ? FOR UPDATE');
         $stmt->execute([$ordenId]);
         $orden = $stmt->fetch();
@@ -53,18 +50,19 @@ function registrarCotizacion(\PDO $pdo, object $usuarioAuth): void
             return;
         }
 
+        // Comillas simples para 'pendiente' (ver nota en ordenes.php sobre ANSI_QUOTES)
         $stmtCotizacion = $pdo->prepare(
-            'INSERT INTO cotizacion (orden_id, repuestos, dictamen, monto, estado)
-             VALUES (?, ?, ?, ?, "pendiente")'
+            "INSERT INTO cotizacion (orden_id, repuestos, dictamen, monto, estado)
+             VALUES (?, ?, ?, ?, 'pendiente')"
         );
         $stmtCotizacion->execute([$ordenId, $repuestos, $dictamen, $monto]);
 
-        $pdo->prepare('UPDATE orden_servicio SET estado_actual = "cotizado" WHERE id = ?')
+        $pdo->prepare("UPDATE orden_servicio SET estado_actual = 'cotizado' WHERE id = ?")
             ->execute([$ordenId]);
 
         $pdo->prepare(
-            'INSERT INTO historial_estado (orden_id, estado, comentario, usuario_id)
-             VALUES (?, "cotizado", ?, ?)'
+            "INSERT INTO historial_estado (orden_id, estado, comentario, usuario_id)
+             VALUES (?, 'cotizado', ?, ?)"
         )->execute([$ordenId, "Cotización: {$dictamen} - $" . $monto, $usuarioAuth->sub]);
 
         $pdo->commit();
@@ -78,14 +76,13 @@ function registrarCotizacion(\PDO $pdo, object $usuarioAuth): void
     }
 }
 
-// Registra la respuesta del cliente (aprobó, rechazó, o un intento fallido de contacto).
 function responderCotizacion(\PDO $pdo, object $usuarioAuth): void
 {
     $datos = json_decode(file_get_contents('php://input'), true);
 
     $ordenId = $datos['orden_id'] ?? null;
-    $respuesta = $datos['respuesta'] ?? null; // "aprobada", "rechazada", "intento_fallido"
-    $canal = $datos['canal'] ?? null; // "presencial" o "whatsapp"
+    $respuesta = $datos['respuesta'] ?? null;
+    $canal = $datos['canal'] ?? null;
 
     if (!$ordenId || !$respuesta) {
         http_response_code(400);
@@ -115,17 +112,16 @@ function responderCotizacion(\PDO $pdo, object $usuarioAuth): void
                 ->execute([$nuevosIntentos, $ordenId]);
 
             if ($nuevosIntentos >= 3) {
-                // Se agotaron los intentos: cierra la orden como sin_respuesta
-                $pdo->prepare('UPDATE orden_servicio SET estado_actual = "sin_respuesta" WHERE id = ?')
+                $pdo->prepare("UPDATE orden_servicio SET estado_actual = 'sin_respuesta' WHERE id = ?")
                     ->execute([$ordenId]);
                 $pdo->prepare(
-                    'INSERT INTO historial_estado (orden_id, estado, comentario, usuario_id)
-                     VALUES (?, "sin_respuesta", "Cliente no respondió tras 3 intentos", ?)'
+                    "INSERT INTO historial_estado (orden_id, estado, comentario, usuario_id)
+                     VALUES (?, 'sin_respuesta', 'Cliente no respondio tras 3 intentos', ?)"
                 )->execute([$ordenId, $usuarioAuth->sub]);
             } else {
                 $pdo->prepare(
-                    'INSERT INTO historial_estado (orden_id, estado, comentario, usuario_id)
-                     VALUES (?, "cotizado", ?, ?)'
+                    "INSERT INTO historial_estado (orden_id, estado, comentario, usuario_id)
+                     VALUES (?, 'cotizado', ?, ?)"
                 )->execute([$ordenId, "Intento de contacto #{$nuevosIntentos} sin respuesta", $usuarioAuth->sub]);
             }
 
@@ -134,7 +130,6 @@ function responderCotizacion(\PDO $pdo, object $usuarioAuth): void
             return;
         }
 
-        // Respuesta real del cliente: aprobada o rechazada
         $estadoCotizacion = $respuesta === 'aprobada' ? 'aprobada' : 'rechazada';
         $nuevoEstadoOrden = $respuesta === 'aprobada' ? 'en_reparacion' : 'no_autorizado';
 
@@ -149,13 +144,13 @@ function responderCotizacion(\PDO $pdo, object $usuarioAuth): void
         $pdo->prepare(
             'INSERT INTO historial_estado (orden_id, estado, comentario, usuario_id)
              VALUES (?, ?, ?, ?)'
-        )->execute([$ordenId, $nuevoEstadoOrden, "Cliente respondió: {$respuesta} (via {$canal})", $usuarioAuth->sub]);
+        )->execute([$ordenId, $nuevoEstadoOrden, "Cliente respondio: {$respuesta} (via {$canal})", $usuarioAuth->sub]);
 
         $pdo->commit();
         echo json_encode(['orden_id' => $ordenId, 'estado_nuevo' => $nuevoEstadoOrden]);
-} catch (\Exception $e) {
-    $pdo->rollBack();
-    http_response_code(500);
-    echo json_encode(['error' => 'No se pudo registrar la respuesta']);
-}
+    } catch (\Exception $e) {
+        $pdo->rollBack();
+        http_response_code(500);
+        echo json_encode(['error' => 'No se pudo registrar la respuesta']);
+    }
 }
