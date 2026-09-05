@@ -27,9 +27,9 @@ function Login() {
       <div className="auth-brand d-flex align-items-center"><img className="auth-logo" src="/logo-expertools.png" alt="Expertools" /></div>
       <div className="auth-layout container">
         <section className="auth-hero">
-          <span className="eyebrow text-uppercase fw-semibold">Plataforma empresarial</span>
-          <h1 className="display-4 fw-semibold">Tu operación, en movimiento.</h1>
-          <p className="text-secondary">Una vista clara para coordinar servicios, clientes y equipos con la confianza de tener todo bajo control.</p>
+          <span className="eyebrow text-uppercase fw-semibold">Taller de reparación</span>
+          <h1 className="display-4 fw-semibold">Órdenes claras, reparaciones bajo control.</h1>
+          <p className="text-secondary">Gestiona el ingreso, diagnóstico, reparación y entrega de cada equipo desde un solo lugar.</p>
         </section>
         <section className="auth-card card shadow-sm rounded-3 border-0">
           <div className="card-body p-4">

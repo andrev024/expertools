@@ -29,7 +29,7 @@ function Encabezado({ usuario, logout }) {
             <button className="button button-quiet btn btn-link" onClick={logout}>Cerrar sesión</button>
           </>
         ) : (
-          <span className="header-note">Plataforma empresarial</span>
+          <span className="header-note">Gestión de reparaciones</span>
         )}
       </div>
     </header>
