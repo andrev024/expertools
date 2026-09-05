@@ -15,3 +15,9 @@ Thumbs.db
  
 # Archivos temporales de prueba
 test.php
+
+# Terraform
+infra/.terraform/
+infra/terraform.tfvars
+infra/*.tfstate
+infra/*.tfstate.backup
