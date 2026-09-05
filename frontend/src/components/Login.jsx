@@ -61,12 +61,12 @@ function Login() {
 
           </div>
         </section>
-        <section className="tracking-login-card card shadow-sm rounded-3 border-0">
-          <div className="card-body p-4">
-            <Seguimiento embebido />
-          </div>
-        </section>
       </div>
+      <section className="tracking-login-card card shadow-sm rounded-3 border-0">
+        <div className="card-body p-4">
+          <Seguimiento embebido />
+        </div>
+      </section>
     </div>
   );
 }

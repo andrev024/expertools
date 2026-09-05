@@ -264,9 +264,10 @@ button:not(.button-quiet):hover, .button-primary:hover { background: var(--accen
 .auth-page { background: var(--bg); padding: 32px clamp(20px, 6vw, 88px) 56px; }
 .auth-brand { width: min(1120px, 100%); margin: 0 auto 48px; justify-content: flex-start; }
 .auth-card { border-radius: 8px; }
-.auth-layout { max-width: 1240px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(520px, 560px); grid-template-rows: auto auto; gap: 24px 64px; align-items: start; }
-.auth-hero { grid-column: 1; grid-row: 1 / span 2; align-self: center; }
-.auth-card, .tracking-login-card { grid-column: 2; min-width: 0; }
+.auth-layout { max-width: 1240px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(520px, 560px); gap: 24px 64px; align-items: center; }
+.auth-hero { grid-column: 1; align-self: center; }
+.auth-card { grid-column: 2; min-width: 0; }
+.tracking-login-card { width: min(1240px, 100%); margin: 32px auto 0; min-width: 0; }
 .tracking-login-card .tracking-main-embedded h1 { font-size: 1.5rem; }
 .tracking-login-card .tracking-main-embedded .page-lead { font-size: 14px; }
 .tracking-login-card .tracking-main-embedded .tracking-form { margin: 20px 0 0; }
