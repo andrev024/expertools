@@ -2,6 +2,7 @@ const ETIQUETAS_ESTADO = {
   recibido: 'Recibido',
   en_diagnostico: 'En diagnóstico',
   cotizado: 'Cotizado',
+  esperando_respuesta: 'En espera de respuesta',
   en_reparacion: 'En reparación',
   esperando_repuesto: 'Esperando repuesto',
   finalizado_tecnico: 'Finalizado por técnico',

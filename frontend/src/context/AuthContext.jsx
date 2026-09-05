@@ -1,10 +1,9 @@
-import { createContext, useContext, useState } from 'react';
+import { useState } from 'react';
 import { apiFetch } from '../api';
+import { AuthContext } from './authContextValue';
 
 // Creamos el "canal" de contexto. Cualquier componente hijo de AuthProvider
 // va a poder leer estos datos con el hook useAuth() de abajo.
-const AuthContext = createContext(null);
-
 export function AuthProvider({ children }) {
   // Al cargar la app, revisamos si ya había una sesión guardada
   // (para que no se pierda el login al recargar la página).
@@ -35,10 +34,4 @@ export function AuthProvider({ children }) {
       {children}
     </AuthContext.Provider>
   );
-}
-
-// Hook personalizado para usar el contexto fácilmente desde cualquier componente:
-// const { usuario, login, logout } = useAuth();
-export function useAuth() {
-  return useContext(AuthContext);
 }

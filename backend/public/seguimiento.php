@@ -4,7 +4,7 @@ require_once __DIR__ . '/../src/bootstrap.php';
 
 use App\Database;
 
-header('Content-Type: application/json');
+header('Content-Type: application/json; charset=utf-8');
 
 $codigo = $_GET['codigo'] ?? null;
 
@@ -35,6 +35,7 @@ $mapaEstadosPublicos = [
     'recibido' => 'Recibido',
     'diagnostico' => 'En reparación',
     'en_reparacion' => 'En reparación',
+    'esperando_respuesta' => 'En espera de respuesta',
     'esperando_repuestos' => 'En reparación',
     'finalizado_tecnico' => 'En reparación',
     'en_revision_recepcion' => 'En reparación',

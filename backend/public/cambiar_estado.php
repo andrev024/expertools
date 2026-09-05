@@ -6,7 +6,7 @@ use App\Database;
 use App\Middleware;
 use App\MaquinaEstados;
 
-header('Content-Type: application/json');
+header('Content-Type: application/json; charset=utf-8');
 
 $usuarioAuth = Middleware::requireAuth(['tecnico', 'recepcion', 'admin']);
 
@@ -79,12 +79,21 @@ try {
     );
     $stmtHistorial->execute([$ordenId, $nuevoEstado, $comentario, $usuarioAuth->sub]);
 
+    if ($nuevoEstado === 'finalizado_tecnico') {
+        $pdo->prepare("UPDATE orden_servicio SET estado_actual = 'en_revision_recepcion' WHERE id = ?")
+            ->execute([$ordenId]);
+        $pdo->prepare(
+            "INSERT INTO historial_estado (orden_id, estado, comentario, usuario_id)
+             VALUES (?, 'en_revision_recepcion', 'Orden enviada a recepción para revisión', ?)"
+        )->execute([$ordenId, $usuarioAuth->sub]);
+    }
+
     $pdo->commit();
 
     echo json_encode([
         'orden_id' => $ordenId,
         'estado_anterior' => $estadoActual,
-        'estado_nuevo' => $nuevoEstado,
+        'estado_nuevo' => $nuevoEstado === 'finalizado_tecnico' ? 'en_revision_recepcion' : $nuevoEstado,
     ]);
 } catch (\Exception $e) {
     $pdo->rollBack();

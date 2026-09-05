@@ -1,5 +1,6 @@
 import { HashRouter, Routes, Route, Navigate, Link } from 'react-router-dom';
-import { AuthProvider, useAuth } from './context/AuthContext';
+import { AuthProvider } from './context/AuthContext';
+import { useAuth } from './context/authContextValue';
 import Login from './components/Login';
 import PanelRecepcion from './components/PanelRecepcion';
 import PanelTecnico from './components/PanelTecnico';

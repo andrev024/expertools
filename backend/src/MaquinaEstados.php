@@ -8,7 +8,8 @@ class MaquinaEstados
     private static array $transiciones = [
         'recibido' => ['en_diagnostico'],
         'en_diagnostico' => ['chatarra', 'cotizado'],
-        'cotizado' => ['en_reparacion', 'no_autorizado', 'sin_respuesta'],
+        'cotizado' => ['en_reparacion', 'no_autorizado', 'esperando_respuesta', 'sin_respuesta'],
+        'esperando_respuesta' => ['en_reparacion', 'no_autorizado'],
         'sin_respuesta' => ['en_diagnostico'],
         'en_reparacion' => ['esperando_repuesto', 'finalizado_tecnico'],
         'esperando_repuesto' => ['en_reparacion'],
@@ -24,6 +25,7 @@ class MaquinaEstados
         'cotizado' => ['tecnico'],
         'en_reparacion' => ['tecnico'],
         'no_autorizado' => ['tecnico', 'recepcion'],
+        'esperando_respuesta' => ['tecnico'],
         'sin_respuesta' => ['tecnico', 'recepcion'],
         'esperando_repuesto' => ['tecnico'],
         'finalizado_tecnico' => ['tecnico'],

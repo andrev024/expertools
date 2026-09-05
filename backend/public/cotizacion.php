@@ -5,7 +5,7 @@ require_once __DIR__ . '/../src/bootstrap.php';
 use App\Database;
 use App\Middleware;
 
-header('Content-Type: application/json');
+header('Content-Type: application/json; charset=utf-8');
 
 $usuarioAuth = Middleware::requireAuth(['tecnico', 'admin']);
 
@@ -30,9 +30,25 @@ function registrarCotizacion(\PDO $pdo, object $usuarioAuth): void
     $dictamen = $datos['dictamen'] ?? null;
     $monto = $datos['monto'] ?? null;
 
-    if (!$ordenId || !$dictamen || $monto === null) {
+    $listaRepuestos = json_decode($repuestos ?: '[]', true);
+    if (!is_array($listaRepuestos)) {
+        $listaRepuestos = [];
+    }
+    $monto = 0;
+    foreach ($listaRepuestos as &$repuesto) {
+        $cantidad = (int) ($repuesto['cantidad'] ?? 0);
+        $montoUnitario = (float) ($repuesto['montoUnitario'] ?? 0);
+        $repuesto['cantidad'] = $cantidad;
+        $repuesto['montoUnitario'] = $montoUnitario;
+        $repuesto['total'] = $cantidad * $montoUnitario;
+        $monto += $repuesto['total'];
+    }
+    unset($repuesto);
+    $repuestos = json_encode($listaRepuestos, JSON_UNESCAPED_UNICODE);
+
+    if (!$ordenId || !$dictamen) {
         http_response_code(400);
-        echo json_encode(['error' => 'orden_id, dictamen y monto son requeridos']);
+        echo json_encode(['error' => 'orden_id y dictamen son requeridos']);
         return;
     }
 
@@ -107,8 +123,14 @@ function responderCotizacion(\PDO $pdo, object $usuarioAuth): void
         }
 
         if ($respuesta === 'en_espera') {
+            $pdo->prepare("UPDATE orden_servicio SET estado_actual = 'esperando_respuesta' WHERE id = ?")
+                ->execute([$ordenId]);
+            $pdo->prepare(
+                "INSERT INTO historial_estado (orden_id, estado, comentario, usuario_id)
+                 VALUES (?, 'esperando_respuesta', 'Pendiente de respuesta del cliente', ?)"
+            )->execute([$ordenId, $usuarioAuth->sub]);
             $pdo->commit();
-            echo json_encode(['orden_id' => $ordenId, 'estado_nuevo' => 'cotizado']);
+            echo json_encode(['orden_id' => $ordenId, 'estado_nuevo' => 'esperando_respuesta'], JSON_UNESCAPED_UNICODE);
             return;
         }
 

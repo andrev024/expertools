@@ -16,6 +16,7 @@ const ESTADOS_ACCIONABLES = [
   'sin_respuesta',
   'en_diagnostico',
   'cotizado',
+  'esperando_respuesta',
   'en_reparacion',
   'esperando_repuesto',
   'finalizado_tecnico',
@@ -41,7 +42,8 @@ function PanelTecnico() {
   }
 
   useEffect(() => {
-    cargarOrdenes();
+    const temporizador = setTimeout(() => cargarOrdenes(), 0);
+    return () => clearTimeout(temporizador);
   }, []);
 
   async function cambiarEstadoSimple(ordenId, nuevoEstado) {
@@ -78,7 +80,7 @@ function PanelTecnico() {
   }
 
   function obtenerRepuestos(ordenId) {
-    return formsCotizacion[ordenId]?.repuestos || [{ referencia: '', cantidad: 1, descripcion: '' }];
+    return formsCotizacion[ordenId]?.repuestos || [{ referencia: '', cantidad: 1, montoUnitario: '', descripcion: '' }];
   }
 
   function actualizarRepuesto(ordenId, indice, campo, valor) {
@@ -91,47 +93,53 @@ function PanelTecnico() {
   function agregarRepuesto(ordenId) {
     actualizarFormCotizacion(ordenId, 'repuestos', [
       ...obtenerRepuestos(ordenId),
-      { referencia: '', cantidad: 1, descripcion: '' },
+      { referencia: '', cantidad: 1, montoUnitario: '', descripcion: '' },
     ]);
   }
 
   function quitarRepuesto(ordenId, indice) {
     const repuestos = obtenerRepuestos(ordenId).filter((_, posicion) => posicion !== indice);
-    actualizarFormCotizacion(ordenId, 'repuestos', repuestos.length ? repuestos : [{ referencia: '', cantidad: 1, descripcion: '' }]);
+    actualizarFormCotizacion(ordenId, 'repuestos', repuestos.length ? repuestos : [{ referencia: '', cantidad: 1, montoUnitario: '', descripcion: '' }]);
   }
 
   async function enviarCotizacion(ordenId) {
     setError('');
     const form = formsCotizacion[ordenId] || {};
     const orden = ordenes.find((item) => item.id === ordenId);
-    if (!form.dictamen || !form.monto) {
-      setError('Dictamen y monto son requeridos');
+    const repuestos = (form.repuestos || []).filter((repuesto) => repuesto.referencia.trim());
+    if (!form.dictamen || repuestos.some((repuesto) => !repuesto.cantidad || !repuesto.montoUnitario)) {
+      setError('El dictamen y los datos completos de cada repuesto son requeridos');
       return;
     }
+
+    const montoTotal = repuestos.reduce(
+      (total, repuesto) => total + (Number(repuesto.cantidad) * Number(repuesto.montoUnitario)),
+      0,
+    );
 
     try {
       await apiFetch('cotizacion.php', {
         method: 'POST',
         body: JSON.stringify({
           orden_id: ordenId,
-          repuestos: JSON.stringify((form.repuestos || []).filter((repuesto) => repuesto.referencia.trim())),
+          repuestos: JSON.stringify(repuestos),
           dictamen: form.dictamen,
-          monto: Number(form.monto),
+          monto: montoTotal,
         }),
       });
       const telefono = String(orden?.cliente_telefono || '').replace(/\D/g, '');
       const telefonoWhatsapp = telefono.length === 10 && telefono.startsWith('3') ? `57${telefono}` : telefono;
       const mensaje = [
-        `👋 Hola ${orden?.cliente_nombre || 'cliente'}, te contactamos desde Expertools.`,
-        '🧾 Te enviamos la cotización de tu servicio:',
+        `\u{1F44B} Hola ${orden?.cliente_nombre || 'cliente'}, te contactamos desde Expertools.`,
+        '\u{1F9FE} Te enviamos la cotización de tu servicio:',
         '',
-        `🔖 Código de seguimiento: ${orden?.codigo_seguimiento || ordenId}`,
-        `🔧 Artículo: ${orden?.articulo_tipo || ''}${orden?.marca ? ` ${orden.marca}` : ''}${orden?.modelo ? ` ${orden.modelo}` : ''}`,
-        `🔍 Diagnóstico: ${form.dictamen}`,
-        `🧩 Repuestos: ${form.repuestos?.filter((repuesto) => repuesto.referencia.trim()).map((repuesto) => `${repuesto.referencia} (x${repuesto.cantidad})${repuesto.descripcion ? `: ${repuesto.descripcion}` : ''}`).join(', ') || 'No requiere repuestos'}`,
-        `💰 Valor total: $${Number(form.monto).toLocaleString('es-CO')}`,
+        `\u{1F516} Código de seguimiento: ${orden?.codigo_seguimiento || ordenId}`,
+        `\u{1F527} Artículo: ${orden?.articulo_tipo || ''}${orden?.marca ? ` ${orden.marca}` : ''}${orden?.modelo ? ` ${orden.modelo}` : ''}`,
+        `\u{1F50D} Diagnóstico: ${form.dictamen}`,
+        `\u{1F9E9} Repuestos: ${form.repuestos?.filter((repuesto) => repuesto.referencia.trim()).map((repuesto) => `${repuesto.referencia} (x${repuesto.cantidad})${repuesto.descripcion ? `: ${repuesto.descripcion}` : ''}`).join(', ') || 'No requiere repuestos'}`,
+        `\u{1F4B0} Valor total: $${montoTotal.toLocaleString('es-CO')}`,
         '',
-        '✅ Por favor confírmanos si autorizas la reparación.',
+        '\u{2705} Por favor confírmanos si autorizas la reparación.',
       ].join('\n');
       window.open(`https://wa.me/${telefonoWhatsapp}?text=${encodeURIComponent(mensaje)}`, '_blank', 'noopener,noreferrer');
       cargarOrdenes();
@@ -190,7 +198,7 @@ function PanelTecnico() {
                 <p className="mb-1"><strong>Repuestos</strong></p>
                 {obtenerRepuestos(orden.id).map((repuesto, indice) => (
                   <div className="row g-2 mb-2" key={`${orden.id}-repuesto-${indice}`}>
-                    <div className="col-md-4">
+                    <div className="col-md-3">
                       <input
                         className="form-control"
                         placeholder="Referencia"
@@ -208,7 +216,21 @@ function PanelTecnico() {
                         onChange={(e) => actualizarRepuesto(orden.id, indice, 'cantidad', e.target.value)}
                       />
                     </div>
-                    <div className="col-md-4">
+                    <div className="col-md-2">
+                      <input
+                        className="form-control"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        placeholder="Valor unitario"
+                        value={repuesto.montoUnitario}
+                        onChange={(e) => actualizarRepuesto(orden.id, indice, 'montoUnitario', e.target.value)}
+                      />
+                      <small className="text-muted">
+                        Total: ${(Number(repuesto.cantidad || 0) * Number(repuesto.montoUnitario || 0)).toLocaleString('es-CO')}
+                      </small>
+                    </div>
+                    <div className="col-md-2">
                       <input
                         className="form-control"
                         placeholder="Descripción (opcional)"
@@ -223,18 +245,16 @@ function PanelTecnico() {
                     </div>
                   </div>
                 ))}
+                <p className="fw-semibold">
+                  Total cotizado: ${(obtenerRepuestos(orden.id)
+                    .filter((repuesto) => repuesto.referencia.trim())
+                    .reduce((total, repuesto) => total + (Number(repuesto.cantidad || 0) * Number(repuesto.montoUnitario || 0)), 0))
+                    .toLocaleString('es-CO')}
+                </p>
                 <button type="button" className="button button-secondary btn btn-outline-secondary" onClick={() => agregarRepuesto(orden.id)}>
                   Agregar repuesto
                 </button>
               </div>
-              <input
-                className="form-control mb-2"
-                type="number"
-                placeholder="Monto cotizado"
-                value={formsCotizacion[orden.id]?.monto || ''}
-                onChange={(e) => actualizarFormCotizacion(orden.id, 'monto', e.target.value)}
-                style={{ display: 'block', width: '100%', marginBottom: '6px' }}
-              />
               <button className="button button-primary btn btn-primary" onClick={() => enviarCotizacion(orden.id)}>Enviar cotización</button>{' '}
               <button className="button button-danger btn btn-outline-danger" onClick={() => marcarChatarra(orden.id)} style={{ color: 'red' }}>
                 Marcar como chatarra (irreparable)
@@ -243,7 +263,7 @@ function PanelTecnico() {
           )}
 
           {/* Estado: cotizado -> registrar la respuesta del cliente */}
-          {orden.estado_actual === 'cotizado' && (
+          {(orden.estado_actual === 'cotizado' || orden.estado_actual === 'esperando_respuesta') && (
             <div>
               <button className="button button-primary btn btn-primary" onClick={() => responderCliente(orden.id, 'aprobada')}>Cliente aprobó</button>{' '}
               <button className="button button-danger btn btn-outline-danger" onClick={() => responderCliente(orden.id, 'rechazada')}>Cliente no aprobó</button>{' '}
