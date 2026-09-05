@@ -19,7 +19,6 @@ function PanelRecepcion() {
   const [articuloDescripcion, setArticuloDescripcion] = useState('');
   const [tipo, setTipo] = useState('mantenimiento');
   const [mensajeExito, setMensajeExito] = useState('');
-  const emoji = (codigo) => String.fromCodePoint(codigo);
 
   async function cargarOrdenes() {
     try {
@@ -41,17 +40,23 @@ function PanelRecepcion() {
     const telefono = String(orden.cliente_telefono || '').replace(/\D/g, '');
     const telefonoWhatsapp = telefono.length === 10 && telefono.startsWith('3') ? `57${telefono}` : telefono;
     const mensaje = [
-      `${emoji(0x1f44b)} Hola ${orden.cliente_nombre}, te contactamos desde Expertools.`,
-      `${emoji(0x1f389)} ¡Tu equipo ya está listo para entregar!`,
+      `Hola ${orden.cliente_nombre}, te contactamos desde Expertools.`,
+      '- Tu equipo ya está listo para entregar.',
       '',
-      `${emoji(0x1f516)} Código de seguimiento: ${orden.codigo_seguimiento}`,
-      `${emoji(0x1f527)} Artículo: ${orden.articulo_tipo}${orden.marca ? ` ${orden.marca}` : ''}${orden.modelo ? ` ${orden.modelo}` : ''}`,
+      `- Código de seguimiento: ${orden.codigo_seguimiento}`,
+      `- Artículo: ${orden.articulo_tipo}${orden.marca ? ` ${orden.marca}` : ''}${orden.modelo ? ` ${orden.modelo}` : ''}`,
       '',
-      `${emoji(0x1f4cd)} Puedes acercarte a recepción para recogerlo.`,
-      `¡Te esperamos! ${emoji(0x1f60a)}`,
+      '- Puedes acercarte a recepción para recogerlo.',
+      'Te esperamos.',
     ].join('\n');
 
-    window.open(`https://wa.me/${telefonoWhatsapp}?text=${encodeURIComponent(mensaje)}`, '_blank', 'noopener,noreferrer');
+    const ventanaWhatsapp = window.open('', '_blank');
+    const urlWhatsapp = `https://wa.me/${telefonoWhatsapp}?text=${encodeURIComponent(mensaje)}`;
+    if (ventanaWhatsapp) {
+      ventanaWhatsapp.location.href = urlWhatsapp;
+    } else {
+      window.location.assign(urlWhatsapp);
+    }
   }
 
   async function cambiarEstado(ordenId, nuevoEstado) {
