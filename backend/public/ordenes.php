@@ -73,7 +73,7 @@ function crearOrden(\PDO $pdo, object $usuarioAuth): void
     } catch (\Exception $e) {
         $pdo->rollBack();
         http_response_code(500);
-        echo json_encode(['error' => 'No se pudo crear la orden']);
+        echo json_encode(['error' => $e->getMessage()]);
     }
 }
 
