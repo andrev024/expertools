@@ -178,6 +178,7 @@ h2 { font-size: 1.45rem; }
 
 .site-header, .public-header {
   max-width: 1240px;
+  margin: 0 auto;
   padding: 20px 32px;
   border-bottom: 1px solid var(--border);
 }
@@ -253,6 +254,13 @@ button:not(.button-quiet):hover, .button-primary:hover { background: var(--accen
 
 .auth-page { background: var(--bg); }
 .auth-card { border-radius: 8px; }
+.auth-layout { max-width: 1120px; display: grid; grid-template-columns: minmax(0, 1fr) 410px; grid-template-rows: auto auto; gap: 24px 64px; align-items: start; }
+.auth-hero { grid-column: 1; grid-row: 1 / span 2; align-self: center; }
+.auth-card, .tracking-login-card { grid-column: 2; min-width: 0; }
+.tracking-login-card .tracking-main-embedded h1 { font-size: 1.5rem; }
+.tracking-login-card .tracking-main-embedded .page-lead { font-size: 14px; }
+.tracking-login-card .tracking-main-embedded .tracking-form { margin: 20px 0 0; }
+.tracking-login-card .tracking-main-embedded .tracking-result { margin-top: 20px; }
 .auth-hero h1 { font-size: clamp(2.5rem, 5vw, 4rem); }
 input, select, textarea { border-radius: 8px; }
 input:focus, select:focus, textarea:focus { outline: 0; border-color: var(--accent); box-shadow: 0 0 0 .2rem rgba(76, 158, 158, .2); }
@@ -261,6 +269,8 @@ input:focus, select:focus, textarea:focus { outline: 0; border-color: var(--acce
   .site-header, .public-header { padding: 16px 20px; }
   .brand-logo { width: 142px; height: 54px; }
   .auth-logo { width: 200px; height: 86px; }
+  .auth-layout { display: block; }
+  .auth-hero { margin-bottom: 32px; }
   .page-content { padding: 32px 20px 60px; }
   .order-card, .picker-card, .tracking-result { padding: 20px; }
 }

@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, Link } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import Login from './components/Login';
 import PanelRecepcion from './components/PanelRecepcion';
@@ -7,9 +7,9 @@ import Seguimiento from './components/Seguimiento';
 
 function Marca() {
   return (
-    <div className="brand" aria-label="Expertools">
+    <Link to="/panel" className="brand text-decoration-none" aria-label="Expertools">
       <img className="brand-logo" src="/logo-expertools.png" alt="Expertools" />
-    </div>
+    </Link>
   );
 }
 

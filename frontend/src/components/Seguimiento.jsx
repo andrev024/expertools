@@ -1,7 +1,8 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { apiFetch } from '../api';
 
-function Seguimiento() {
+function Seguimiento({ embebido = false }) {
   const [codigo, setCodigo] = useState('');
   const [resultado, setResultado] = useState(null);
   const [error, setError] = useState('');
@@ -24,12 +25,14 @@ function Seguimiento() {
   }
 
   return (
-    <div className="tracking-page min-vh-100 bg-light">
-      <header className="public-header container-fluid border-bottom bg-white">
-        <div className="brand d-flex align-items-center"><img className="brand-logo" src="/logo-expertools.png" alt="Expertools" /></div>
-        <a href="/login" className="text-link fw-semibold">Acceso interno →</a>
-      </header>
-      <main className="tracking-main container py-5">
+    <div className={embebido ? 'tracking-embedded' : 'tracking-page min-vh-100 bg-light'}>
+      {!embebido && (
+        <header className="public-header container-fluid border-bottom bg-white">
+          <Link to="/login" className="brand d-flex align-items-center text-decoration-none"><img className="brand-logo" src="/logo-expertools.png" alt="Expertools" /></Link>
+          <Link to="/login" className="text-link fw-semibold">Acceso interno →</Link>
+        </header>
+      )}
+      <main className={embebido ? 'tracking-main tracking-main-embedded container-fluid p-0' : 'tracking-main container py-5'}>
         <div className="row justify-content-center">
           <div className="col-12 col-lg-9 col-xl-8">
             <span className="eyebrow text-uppercase fw-semibold">Seguimiento en tiempo real</span>

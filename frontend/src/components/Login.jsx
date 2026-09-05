@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import Seguimiento from './Seguimiento';
 
 function Login() {
   const [email, setEmail] = useState('');
@@ -58,11 +59,11 @@ function Login() {
             <button className="button button-primary button-wide btn btn-primary" type="submit">Entrar al panel <span aria-hidden="true">→</span></button>
           </form>
 
-          <div className="auth-divider"><span>o</span></div>
-
-          <p className="auth-footer">
-            ¿Eres cliente? <Link to="/seguimiento">Consulta el estado de tu reparación</Link>
-          </p>
+          </div>
+        </section>
+        <section className="tracking-login-card card shadow-sm rounded-3 border-0">
+          <div className="card-body p-4">
+            <Seguimiento embebido />
           </div>
         </section>
       </div>
