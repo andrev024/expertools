@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 function Login() {
@@ -10,12 +10,12 @@ function Login() {
   const navigate = useNavigate();
 
   async function manejarSubmit(e) {
-    e.preventDefault(); // evita que el navegador recargue la página al enviar el form
+    e.preventDefault();
     setError('');
 
     try {
       await login(email, password);
-      navigate('/panel'); // si el login funciona, redirige al panel
+      navigate('/panel');
     } catch (err) {
       setError(err.message);
     }
@@ -46,6 +46,13 @@ function Login() {
         {error && <p style={{ color: 'red' }}>{error}</p>}
         <button type="submit">Entrar</button>
       </form>
+
+      <hr style={{ margin: '24px 0' }} />
+
+      <p style={{ textAlign: 'center' }}>
+        ¿Eres cliente y quieres ver el estado de tu reparación?<br />
+        <Link to="/seguimiento">Consulta aquí con tu código</Link>
+      </p>
     </div>
   );
 }
