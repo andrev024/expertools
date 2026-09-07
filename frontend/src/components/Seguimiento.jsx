@@ -80,6 +80,16 @@ function Seguimiento({ embebido = false }) {
                       </li>
                     ))}
                   </ul>
+                  {resultado.comentarios?.length > 0 && (
+                    <div className="public-comments">
+                      <h3 className="h6 text-uppercase text-secondary fw-semibold mb-3">Comentarios del servicio</h3>
+                      {resultado.comentarios.map((comentario, index) => (
+                        <p key={`${comentario.fecha}-${index}`}>
+                          <span>{comentario.fecha}</span>{comentario.comentario}
+                        </p>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             )}

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { apiFetch } from '../api';
 import { formatearEstado } from '../utils/textoUI';
+import HistorialOrden from './HistorialOrden';
 
 // Transiciones simples (via cambiar_estado.php) que no requieren formulario extra
 const TRANSICIONES_SIMPLES = {
@@ -181,10 +182,17 @@ function PanelTecnico() {
 
       {ordenes.map((orden) => (
         <div key={orden.id} className="order-card card shadow-sm rounded-3 border-0">
-          <h3 className="h5">{orden.codigo_seguimiento}</h3>
-          <p>Cliente: {orden.cliente_nombre} ({orden.cliente_telefono})</p>
-          <p>Artículo: {orden.articulo_tipo} {orden.marca}</p>
-          <p>Estado actual: <strong className="badge rounded-pill bg-success-subtle text-success">{formatearEstado(orden.estado_actual)}</strong></p>
+          <div className="order-card-header">
+            <div>
+              <span className="order-kicker">Trabajo en cola</span>
+              <h3 className="h5">{orden.codigo_seguimiento}</h3>
+            </div>
+            <strong className="status-badge">{formatearEstado(orden.estado_actual)}</strong>
+          </div>
+          <div className="order-summary-grid">
+            <p><span>Cliente</span>{orden.cliente_nombre} <small>{orden.cliente_telefono}</small></p>
+            <p><span>Artículo</span>{orden.articulo_tipo} {orden.marca || ''} {orden.modelo || ''}</p>
+          </div>
 
           {/* Estado: recibido -> boton para tomar la orden */}
           {(orden.estado_actual === 'recibido' || orden.estado_actual === 'sin_respuesta') && (
@@ -298,6 +306,7 @@ function PanelTecnico() {
               ))}
             </div>
           )}
+          <HistorialOrden ordenId={orden.id} />
         </div>
       ))}
     </div>

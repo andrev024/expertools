@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { apiFetch } from '../api';
 import ClienteArticuloPicker from './ClienteArticuloPicker';
+import HistorialOrden from './HistorialOrden';
 import { formatearEstado, formatearTipoOrden } from '../utils/textoUI';
 
 // En v2, recepcion ya NO cotiza -- solo recibe y hace la entrega final.
@@ -143,8 +144,14 @@ function PanelRecepcion() {
         .filter((o) => ACCIONES_RECEPCION[o.estado_actual])
         .map((orden) => (
           <div key={orden.id} className="order-card card shadow-sm rounded-3 border-0">
-            <h3 className="h5">{orden.codigo_seguimiento}</h3>
-            <p>Cliente: {orden.cliente_nombre} — Estado: <strong className="badge rounded-pill bg-success-subtle text-success">{formatearEstado(orden.estado_actual)}</strong></p>
+            <div className="order-card-header">
+              <div>
+                <span className="order-kicker">Orden pendiente</span>
+                <h3 className="h5">{orden.codigo_seguimiento}</h3>
+              </div>
+              <strong className="status-badge">{formatearEstado(orden.estado_actual)}</strong>
+            </div>
+            <p className="order-meta">{orden.cliente_nombre} · {orden.articulo_tipo} {orden.marca || ''}</p>
             <input
               type="text"
               placeholder="Comentario"
@@ -162,6 +169,7 @@ function PanelRecepcion() {
                 Pasar a: {formatearEstado(siguienteEstado)}
               </button>
             ))}
+            <HistorialOrden ordenId={orden.id} />
           </div>
         ))}
 
@@ -178,6 +186,7 @@ function PanelRecepcion() {
                 <th className="fw-semibold">Cliente</th>
                 <th className="fw-semibold">Estado</th>
                 <th className="fw-semibold">Tipo</th>
+                <th className="fw-semibold">Detalle</th>
               </tr>
             </thead>
             <tbody>
@@ -186,8 +195,9 @@ function PanelRecepcion() {
                   <td data-label="Código">{orden.codigo_seguimiento}</td>
                   <td data-label="Artículo">{orden.articulo_tipo} {orden.marca}</td>
                   <td data-label="Cliente">{orden.cliente_nombre}</td>
-                  <td data-label="Estado"><span className="badge rounded-pill bg-success-subtle text-success">{formatearEstado(orden.estado_actual)}</span></td>
+                  <td data-label="Estado"><span className="status-badge">{formatearEstado(orden.estado_actual)}</span></td>
                   <td data-label="Tipo">{formatearTipoOrden(orden.tipo)}</td>
+                  <td data-label="Historial"><HistorialOrden ordenId={orden.id} /></td>
                 </tr>
               ))}
             </tbody>
