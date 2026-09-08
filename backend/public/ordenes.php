@@ -54,10 +54,10 @@ function crearOrden(\PDO $pdo, object $usuarioAuth): void
         // ANSI_QUOTES) las interpretan como nombre de columna en vez de texto.
         $stmt = $pdo->prepare(
             "INSERT INTO orden_servicio
-                (codigo_seguimiento, articulo_id, tipo, orden_original_id, estado_actual, fecha_ingreso)
-             VALUES (?, ?, ?, ?, 'recibido', NOW())"
+                     (codigo_seguimiento, articulo_id, tipo, orden_original_id, estado_actual, ubicacion_actual, fecha_ingreso)
+                 VALUES (?, ?, ?, ?, 'recibido', ?, NOW())"
         );
-        $stmt->execute([$codigoSeguimiento, $articuloId, $tipo, $ordenOriginalId]);
+          $stmt->execute([$codigoSeguimiento, $articuloId, $tipo, $ordenOriginalId, $ubicacion ?: null]);
         $ordenId = $pdo->lastInsertId();
 
         $stmtHistorial = $pdo->prepare(
@@ -93,7 +93,7 @@ function listarOrdenes(\PDO $pdo): void
                     COALESCE((SELECT MAX(h.fecha) FROM historial_estado h WHERE h.orden_id = os.id), os.fecha_ingreso) AS estado_desde,
                     a.tipo AS articulo_tipo, a.marca, a.modelo,
                     COALESCE((SELECT GROUP_CONCAT(ac.nombre SEPARATOR ', ') FROM accesorio ac WHERE ac.articulo_id = a.id), '') AS accesorios,
-                    COALESCE((SELECT SUBSTRING_INDEX(h.comentario, 'Ubicacion: ', -1)
+                    COALESCE(os.ubicacion_actual, (SELECT SUBSTRING_INDEX(h.comentario, 'Ubicacion: ', -1)
                               FROM historial_estado h
                               WHERE h.orden_id = os.id AND h.comentario LIKE '%Ubicacion:%'
                               ORDER BY h.fecha DESC LIMIT 1), '') AS ubicacion,
@@ -131,6 +131,11 @@ function actualizarUbicacion(\PDO $pdo, object $usuarioAuth): void
         echo json_encode(['error' => 'Orden no encontrada']);
         return;
     }
+
+    $stmt = $pdo->prepare(
+        'UPDATE orden_servicio SET ubicacion_actual = ? WHERE id = ?'
+    );
+    $stmt->execute([$ubicacion, $ordenId]);
 
     $stmt = $pdo->prepare(
         'INSERT INTO historial_estado (orden_id, estado, comentario, usuario_id)

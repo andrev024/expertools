@@ -7,6 +7,7 @@ import PanelTecnico from './components/PanelTecnico';
 import Seguimiento from './components/Seguimiento';
 import { formatearRol } from './utils/textoUI';
 import GestionUsuarios from './components/GestionUsuarios';
+import { API_BASE } from './api';
 
 function Marca() {
   return (
@@ -17,6 +18,22 @@ function Marca() {
 }
 
 function Encabezado({ usuario, logout }) {
+  async function descargarBaseDatos() {
+    const respuesta = await fetch(`${API_BASE}/descargar_base_datos.php`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+    });
+    if (!respuesta.ok) {
+      throw new Error('No se pudo descargar el respaldo');
+    }
+    const archivo = await respuesta.blob();
+    const url = URL.createObjectURL(archivo);
+    const enlace = document.createElement('a');
+    enlace.href = url;
+    enlace.download = 'expertools-respaldo.sql';
+    enlace.click();
+    URL.revokeObjectURL(url);
+  }
+
   return (
     <header className="site-header container-fluid bg-white border-bottom">
       <Marca />
@@ -28,6 +45,7 @@ function Encabezado({ usuario, logout }) {
               <span className="user-details"><b>{usuario.nombre}</b><small>{formatearRol(usuario.rol)}</small></span>
             </div>
             {(usuario.rol === 'recepcion' || usuario.rol === 'admin') && <Link className="users-link" to="/usuarios">Usuarios</Link>}
+            {(usuario.rol === 'recepcion' || usuario.rol === 'admin') && <button className="users-link backup-link" type="button" onClick={descargarBaseDatos}>Descargar base de datos</button>}
             <button className="button button-quiet btn btn-link" onClick={logout}>Cerrar sesión</button>
           </>
         ) : (

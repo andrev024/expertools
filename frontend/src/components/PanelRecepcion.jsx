@@ -50,6 +50,8 @@ function PanelRecepcion() {
   const [ubicacionInicial, setUbicacionInicial] = useState('');
   const [mensajeExito, setMensajeExito] = useState('');
   const [filtroAntiguedad, setFiltroAntiguedad] = useState('todas');
+  const [editandoUbicacion, setEditandoUbicacion] = useState(null);
+  const [ubicaciones, setUbicaciones] = useState({});
 
   async function cargarOrdenes() {
     try {
@@ -105,6 +107,22 @@ function PanelRecepcion() {
         const orden = ordenes.find((item) => item.id === ordenId);
         if (orden) abrirAvisoEntrega(orden);
       }
+      cargarOrdenes();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  async function guardarUbicacion(ordenId) {
+    const ubicacion = (ubicaciones[ordenId] || '').trim();
+    if (!ubicacion) return;
+    setError('');
+    try {
+      await apiFetch('ordenes.php', {
+        method: 'PATCH',
+        body: JSON.stringify({ orden_id: ordenId, ubicacion }),
+      });
+      setEditandoUbicacion(null);
       cargarOrdenes();
     } catch (err) {
       setError(err.message);
@@ -234,6 +252,18 @@ function PanelRecepcion() {
             <p className="order-meta">{orden.cliente_nombre} · {orden.articulo_tipo} {orden.marca || ''}</p>
             <p className="small text-secondary">Estado desde: {mostrarFecha(fechaEstado(orden))}</p>
             {orden.accesorios && <p className="small text-secondary">Accesorios: {orden.accesorios}</p>}
+            <div className="order-location mb-3">
+              <strong>Ubicación:</strong> {orden.ubicacion || 'Sin ubicación registrada'}
+              {editandoUbicacion === orden.id ? (
+                <div className="d-flex gap-2 mt-2">
+                  <input className="form-control" type="text" placeholder="Ej. Repisa A-3" value={ubicaciones[orden.id] ?? orden.ubicacion ?? ''} onChange={(e) => setUbicaciones({ ...ubicaciones, [orden.id]: e.target.value })} />
+                  <button type="button" className="button button-primary btn btn-primary" onClick={() => guardarUbicacion(orden.id)}>Guardar</button>
+                  <button type="button" className="button button-secondary btn btn-outline-secondary" onClick={() => setEditandoUbicacion(null)}>Cancelar</button>
+                </div>
+              ) : (
+                <button type="button" className="button button-quiet ms-2" onClick={() => { setUbicaciones({ ...ubicaciones, [orden.id]: orden.ubicacion || '' }); setEditandoUbicacion(orden.id); }}>Cambiar ubicación</button>
+              )}
+            </div>
             <input
               type="text"
               placeholder="Comentario"
@@ -280,6 +310,7 @@ function PanelRecepcion() {
                 <th className="fw-semibold">Código</th>
                 <th className="fw-semibold">Artículo</th>
                 <th className="fw-semibold">Cliente</th>
+                <th className="fw-semibold">Ubicación</th>
                 <th className="fw-semibold">Estado</th>
                 <th className="fw-semibold">Tipo</th>
                 <th className="fw-semibold">Detalle</th>
@@ -287,10 +318,22 @@ function PanelRecepcion() {
             </thead>
             <tbody>
               {ordenes.filter((orden) => coincideFiltroAntiguedad(orden.fecha_ingreso, filtroAntiguedad)).map((orden) => (
-                <tr key={orden.id} className={antiguedadEstado(fechaEstado(orden))?.clase}>
+                <tr key={orden.id} className={antiguedadEstado(orden.fecha_ingreso)?.clase}>
                   <td data-label="Código">{orden.codigo_seguimiento}</td>
                   <td data-label="Artículo">{orden.articulo_tipo} {orden.marca}</td>
                   <td data-label="Cliente">{orden.cliente_nombre}</td>
+                  <td data-label="Ubicación">
+                    <strong>{orden.ubicacion || 'Sin ubicación'}</strong>
+                    {editandoUbicacion === orden.id ? (
+                      <div className="mt-2">
+                        <input className="form-control" type="text" value={ubicaciones[orden.id] ?? orden.ubicacion ?? ''} onChange={(e) => setUbicaciones({ ...ubicaciones, [orden.id]: e.target.value })} />
+                        <button type="button" className="button button-primary btn btn-primary btn-sm mt-2 me-1" onClick={() => guardarUbicacion(orden.id)}>Guardar</button>
+                        <button type="button" className="button button-secondary btn btn-outline-secondary btn-sm mt-2" onClick={() => setEditandoUbicacion(null)}>Cancelar</button>
+                      </div>
+                    ) : (
+                      <button type="button" className="button button-quiet d-block" onClick={() => { setUbicaciones({ ...ubicaciones, [orden.id]: orden.ubicacion || '' }); setEditandoUbicacion(orden.id); }}>Cambiar</button>
+                    )}
+                  </td>
                   <td data-label="Estado"><span className="status-badge">{formatearEstado(orden.estado_actual)}</span><small className="d-block mt-1">Desde {mostrarFecha(fechaEstado(orden))}</small>{antiguedadEstado(fechaEstado(orden))?.horas >= 24 && <small className="d-block">{antiguedadEstado(fechaEstado(orden)).horas} h pendiente</small>}</td>
                   <td data-label="Tipo">{formatearTipoOrden(orden.tipo)}</td>
                   <td data-label="Historial"><HistorialOrden ordenId={orden.id} /></td>

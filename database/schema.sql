@@ -50,6 +50,7 @@ CREATE TABLE IF NOT EXISTS orden_servicio (
     orden_original_id INT NULL,
     tecnico_asignado_id INT NULL,
     estado_actual VARCHAR(50) NOT NULL DEFAULT 'recibido',
+    ubicacion_actual VARCHAR(150) NULL,
     intentos_contacto_cliente INT NOT NULL DEFAULT 0,
     fecha_ingreso TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     fecha_entrega TIMESTAMP NULL,

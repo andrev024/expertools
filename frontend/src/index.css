@@ -191,6 +191,7 @@ h2 { font-size: 1.45rem; }
 .header-actions { display: flex; align-items: center; justify-content: flex-end; min-width: 0; gap: 22px; }
 .users-link { color: var(--accent-dark); font-weight: 700; text-decoration: none; padding: 7px 11px; border: 1px solid var(--accent); border-radius: 8px; background: var(--accent-soft); }
 .users-link:hover { color: var(--text-h); text-decoration: none; background: #d8eeee; border-color: var(--accent-dark); }
+.backup-link { font: inherit; cursor: pointer; }
 .user-chip { display: flex; align-items: center; min-width: 0; gap: 9px; }
 .user-chip { gap: 9px; }
 .user-avatar { display: grid; place-items: center; width: 33px; height: 33px; border-radius: 50%; background: var(--ink-soft); color: var(--accent-dark); font-weight: 700; flex: 0 0 auto; }
@@ -239,7 +240,7 @@ button:not(.button-quiet):hover, .button-primary:hover { background: var(--accen
 .message.error, .error { color: #842029; background: #f8d7da; border: 1px solid #f1aeb5; }
 
 .orders-table-wrapper { width: 100%; max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; border: 1px solid var(--border); border-radius: 8px; }
-.orders-table { width: 100%; border: 0; border-radius: 8px; box-shadow: var(--shadow-soft); overflow: hidden; }
+.orders-table { width: 100%; min-width: 900px; border: 0; border-radius: 8px; box-shadow: var(--shadow-soft); overflow: hidden; }
 .orders-table th { padding: 15px 16px; color: #343a40; background: #f1f3f5; font-weight: 700; }
 .orders-table td { padding: 15px 16px; border-bottom-color: var(--border); }
 .orders-table tbody tr:nth-child(even) { background: #f8f9fa; }
