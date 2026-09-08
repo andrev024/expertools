@@ -91,8 +91,12 @@ function registrarCotizacion(\PDO $pdo, object $usuarioAuth): void
         echo json_encode(['orden_id' => $ordenId, 'estado_nuevo' => 'cotizado']);
     } catch (\Exception $e) {
         $pdo->rollBack();
+        error_log('Error al registrar cotizacion: ' . $e->getMessage());
         http_response_code(500);
-        echo json_encode(['error' => 'No se pudo registrar la cotización']);
+        $mensaje = str_contains($e->getMessage(), "Unknown column 'abono'")
+            ? 'La base de datos necesita ejecutar migration_v3.sql antes de registrar cotizaciones'
+            : 'No se pudo registrar la cotización';
+        echo json_encode(['error' => $mensaje]);
     }
 }
 

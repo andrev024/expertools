@@ -158,8 +158,15 @@ function PanelTecnico() {
     setError('');
     const form = formsCotizacion[ordenId] || {};
     const orden = ordenes.find((item) => item.id === ordenId);
-    const repuestos = (form.repuestos || []).filter((repuesto) => repuesto.referencia.trim());
-    if (!form.dictamen || repuestos.some((repuesto) => !repuesto.cantidad || !repuesto.montoUnitario)) {
+    const repuestos = obtenerRepuestos(ordenId)
+      .filter((repuesto) => String(repuesto.referencia || '').trim())
+      .map((repuesto) => ({
+        ...repuesto,
+        referencia: String(repuesto.referencia || '').trim(),
+        cantidad: Number(repuesto.cantidad),
+        montoUnitario: Number(repuesto.montoUnitario),
+      }));
+    if (!form.dictamen?.trim() || repuestos.some((repuesto) => !repuesto.cantidad || !repuesto.montoUnitario)) {
       setError('El dictamen y los datos completos de cada repuesto son requeridos');
       return;
     }
@@ -188,17 +195,20 @@ function PanelTecnico() {
       const telefono = String(orden?.cliente_telefono || '').replace(/\D/g, '');
       const telefonoWhatsapp = telefono.length === 10 && telefono.startsWith('3') ? `57${telefono}` : telefono;
       const mensaje = [
-        `Hola ${orden?.cliente_nombre || 'cliente'}, te contactamos desde Expertools.`,
-        '✅ Cotización de servicio:',
+        `👋 Hola ${orden?.cliente_nombre || 'cliente'}, te contactamos desde Expertools.`,
+        '**📋 Cotización de servicio: **',
         '',
-        `Código: ${orden?.codigo_seguimiento || ordenId}`,
-        `Artículo: ${orden?.articulo_tipo || ''}${orden?.marca ? ` ${orden.marca}` : ''}${orden?.modelo ? ` ${orden.modelo}` : ''}`,
-        `Diagnóstico: ${form.dictamen}`,
-        `Repuestos: ${form.repuestos?.filter((repuesto) => repuesto.referencia.trim()).map((repuesto) => `${repuesto.referencia} (x${repuesto.cantidad})${repuesto.descripcion ? `: ${repuesto.descripcion}` : ''}`).join(', ') || 'No requiere repuestos'}`,
-        `Total: $${montoTotal.toLocaleString('es-CO')}`,
-        Number(form.abono || 0) > 0 ? `Abono requerido: $${Number(form.abono).toLocaleString('es-CO')}` : '',
+        `🆔 Código: ${orden?.codigo_seguimiento || ordenId}`,
+        `⚙️ Artículo: ${orden?.articulo_tipo || ''}${orden?.marca ? ` ${orden.marca}` : ''}${orden?.modelo ? ` ${orden.modelo}` : ''}`,
+        `🔍 Diagnóstico: ${form.dictamen}`,
+        `📦 Repuestos: ${form.repuestos?.filter((repuesto) => repuesto.referencia.trim()).map((repuesto) => `${repuesto.referencia} (x${repuesto.cantidad})${repuesto.descripcion ? `: ${repuesto.descripcion}` : ''}`).join(', ') || 'No requiere repuestos'}`,
+        `💰 Total: $${montoTotal.toLocaleString('es-CO')}`,
+        Number(form.abono || 0) > 0 ? `⚠️ Abono requerido: $${Number(form.abono).toLocaleString('es-CO')}` : '',
         '',
-        'Por favor confírmanos por este medio si autorizas la reparación. El técnico registrará tu respuesta.',
+        '💬 Por favor confírmanos por este medio si autorizas la reparación, recuerda que la reparacion no inicia si no se recibe el abono. El técnico registrará tu respuesta.',
+        '',
+        'Instagram: https://www.instagram.com/expertools_herramientas',
+        'Ubicación: https://www.google.com/maps/search/?api=1&query=ExperTools%20Reparaci%C3%B3n%20Mantenimiento%20y%20Venta%20de%20Herramientas%2C%20Bogot%C3%A1',
       ].join('\n');
       const urlWhatsapp = `https://wa.me/${telefonoWhatsapp}?text=${encodeURIComponent(mensaje)}`;
       if (ventanaWhatsapp) {

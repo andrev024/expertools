@@ -35,7 +35,7 @@ RUN echo '<Directory /var/www/html/public/>\n\
     Require all granted\n\
 </Directory>' >> /etc/apache2/apache2.conf
  
-RUN a2enmod rewrite
+RUN a2enmod rewrite headers
  
 EXPOSE 80
  

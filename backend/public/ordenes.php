@@ -64,9 +64,19 @@ function crearOrden(\PDO $pdo, object $usuarioAuth): void
             "INSERT INTO historial_estado (orden_id, estado, comentario, usuario_id)
              VALUES (?, 'recibido', ?, ?)"
         );
+        $stmtAccesorios = $pdo->prepare(
+            'SELECT GROUP_CONCAT(nombre SEPARATOR ", ")
+             FROM accesorio
+             WHERE articulo_id = ?'
+        );
+        $stmtAccesorios->execute([$articuloId]);
+        $accesorios = trim((string) ($stmtAccesorios->fetchColumn() ?: ''));
         $comentarioRecepcion = $ubicacion
             ? "Articulo recibido en recepcion. Ubicacion: {$ubicacion}"
             : 'Articulo recibido en recepcion. Ubicacion pendiente';
+        if ($accesorios !== '') {
+            $comentarioRecepcion .= ". Accesorios: {$accesorios}";
+        }
         $stmtHistorial->execute([$ordenId, $comentarioRecepcion, $usuarioAuth->sub]);
 
         $pdo->commit();

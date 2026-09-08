@@ -74,13 +74,15 @@ function PanelRecepcion() {
     const telefonoWhatsapp = telefono.length === 10 && telefono.startsWith('3') ? `57${telefono}` : telefono;
     const mensaje = [
       `👋 Hola ${orden.cliente_nombre}, te contactamos desde Expertools.`,
-      '- ✅ Tu equipo ya está listo para entregar.',
+      '⚙️ Tu equipo ya está listo para entregar.',
       '',
-      `- 📌 Código de seguimiento: ${orden.codigo_seguimiento}`,
+      `- 🆔 Código de seguimiento: ${orden.codigo_seguimiento}`,
       `- Artículo: ${orden.articulo_tipo}${orden.marca ? ` ${orden.marca}` : ''}${orden.modelo ? ` ${orden.modelo}` : ''}`,
       '',
-      '- 📍 Puedes acercarte a recepción para recogerlo.',
-      '🙌 Te esperamos.',
+      '💬 Por favor, acércate a Expertools para recoger tu equipo.',
+      '',
+      'Instagram: https://www.instagram.com/expertools_herramientas',
+      'Ubicación: https://www.google.com/maps/search/?api=1&query=ExperTools%20Reparaci%C3%B3n%20Mantenimiento%20y%20Venta%20de%20Herramientas%2C%20Bogot%C3%A1',
     ].join('\n');
 
     const ventanaWhatsapp = window.open('', '_blank');
