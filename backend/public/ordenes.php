@@ -65,9 +65,9 @@ function crearOrden(\PDO $pdo, object $usuarioAuth): void
              VALUES (?, 'recibido', ?, ?)"
         );
         $stmtAccesorios = $pdo->prepare(
-            'SELECT GROUP_CONCAT(nombre SEPARATOR ", ")
+            "SELECT GROUP_CONCAT(nombre SEPARATOR ', ')
              FROM accesorio
-             WHERE articulo_id = ?'
+             WHERE articulo_id = ?"
         );
         $stmtAccesorios->execute([$articuloId]);
         $accesorios = trim((string) ($stmtAccesorios->fetchColumn() ?: ''));
