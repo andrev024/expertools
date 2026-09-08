@@ -230,6 +230,11 @@ function PanelRecepcion() {
             </div>
             <strong className="status-badge">{formatearEstado(orden.estado_actual)}</strong>
           </div>
+          {antiguedadEstado(orden.fecha_ingreso)?.dias >= 7 && (
+            <p className={`alert antiguedad-aviso py-2 mb-2 ${antiguedadEstado(orden.fecha_ingreso).clase}`}>
+              Orden ingresada hace {antiguedadEstado(orden.fecha_ingreso).dias} días
+            </p>
+          )}
           <p className="order-meta">{orden.cliente_nombre} · {orden.articulo_tipo} {orden.marca || ''}</p>
           <input
             type="text"
@@ -340,7 +345,7 @@ function PanelRecepcion() {
                       <button type="button" className="button button-quiet d-block" onClick={() => { setUbicaciones({ ...ubicaciones, [orden.id]: orden.ubicacion || '' }); setEditandoUbicacion(orden.id); }}>Cambiar</button>
                     )}
                   </td>
-                  <td data-label="Estado"><span className="status-badge">{formatearEstado(orden.estado_actual)}</span><small className="d-block mt-1">Desde {mostrarFecha(fechaEstado(orden))}</small>{antiguedadEstado(fechaEstado(orden))?.horas >= 24 && <small className="d-block">{antiguedadEstado(fechaEstado(orden)).horas} h pendiente</small>}</td>
+                  <td data-label="Estado"><span className="status-badge">{formatearEstado(orden.estado_actual)}</span><small className="d-block mt-1">Desde {mostrarFecha(fechaEstado(orden))}</small><small className="d-block">Ingresada hace {antiguedadEstado(orden.fecha_ingreso)?.dias || 0} días</small>{antiguedadEstado(fechaEstado(orden))?.horas >= 24 && <small className="d-block">{antiguedadEstado(fechaEstado(orden)).horas} h pendiente en este estado</small>}</td>
                   <td data-label="Tipo">{formatearTipoOrden(orden.tipo)}</td>
                   <td data-label="Historial"><HistorialOrden ordenId={orden.id} /></td>
                 </tr>
