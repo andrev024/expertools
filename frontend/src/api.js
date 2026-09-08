@@ -6,7 +6,7 @@ export async function apiFetch(endpoint, opciones = {}) {
   const token = localStorage.getItem('token');
 
   const headers = {
-    'Content-Type': 'application/json',
+    ...(opciones.body ? { 'Content-Type': 'application/json' } : {}),
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...opciones.headers,
   };
