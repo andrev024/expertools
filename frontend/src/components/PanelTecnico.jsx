@@ -5,6 +5,7 @@ import HistorialOrden from './HistorialOrden';
 
 // Transiciones simples (via cambiar_estado.php) que no requieren formulario extra
 const TRANSICIONES_SIMPLES = {
+  esperando_abono: ['en_reparacion'],
   en_reparacion: ['esperando_repuesto', 'finalizado_tecnico'],
   esperando_repuesto: ['en_reparacion'],
   finalizado_tecnico: ['en_revision_recepcion'],
