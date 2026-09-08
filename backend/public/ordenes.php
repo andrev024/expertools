@@ -116,8 +116,14 @@ function listarOrdenes(\PDO $pdo): void
 
         echo json_encode($stmt->fetchAll());
     } catch (\Exception $e) {
+        error_log('Error al listar ordenes: ' . $e->getMessage());
         http_response_code(500);
-        echo json_encode(['error' => 'No se pudo obtener la lista de ordenes']);
+        $mensaje = str_contains($e->getMessage(), "Unknown column 'os.ubicacion_actual'")
+            ? 'Falta ejecutar migration_v4.sql en la base de datos'
+            : (str_contains($e->getMessage(), "Table") && str_contains($e->getMessage(), 'accesorio')
+                ? 'Falta ejecutar migration_v3.sql en la base de datos'
+                : 'No se pudo obtener la lista de ordenes');
+        echo json_encode(['error' => $mensaje]);
     }
 }
 

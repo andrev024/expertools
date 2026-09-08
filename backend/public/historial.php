@@ -20,12 +20,37 @@ if (!$ordenId) {
 }
 
 $stmt = $pdo->prepare(
-    'SELECT h.estado, h.comentario, h.fecha, u.nombre AS usuario_nombre
+    "SELECT h.estado, h.comentario, h.fecha, u.nombre AS usuario_nombre,
+            COALESCE((SELECT GROUP_CONCAT(a.nombre SEPARATOR ', ')
+                      FROM accesorio a
+                      JOIN orden_servicio os2 ON os2.articulo_id = a.articulo_id
+                      WHERE os2.id = h.orden_id), '') AS accesorios
      FROM historial_estado h
-     JOIN usuario u ON u.id = h.usuario_id
+     LEFT JOIN usuario u ON u.id = h.usuario_id
      WHERE h.orden_id = ?
-     ORDER BY h.fecha ASC'
+     ORDER BY h.fecha ASC"
 );
-$stmt->execute([$ordenId]);
+try {
+    $stmt->execute([$ordenId]);
+} catch (\Exception $e) {
+    error_log('Error al consultar historial: ' . $e->getMessage());
+    http_response_code(500);
+    $mensaje = str_contains($e->getMessage(), 'accesorio')
+        ? 'Falta ejecutar migration_v3.sql en la base de datos'
+        : 'No se pudo obtener el historial de la orden';
+    echo json_encode(['error' => $mensaje]);
+    exit;
+}
 
-echo json_encode($stmt->fetchAll());
+$historial = $stmt->fetchAll();
+foreach ($historial as &$paso) {
+    if ($paso['estado'] === 'recibido' && $paso['accesorios'] !== ''
+        && stripos((string) $paso['comentario'], 'accesorios:') === false) {
+        $paso['comentario'] = rtrim((string) $paso['comentario'], '.')
+            . '. Accesorios: ' . $paso['accesorios'];
+    }
+    unset($paso['accesorios']);
+}
+unset($paso);
+
+echo json_encode($historial);
