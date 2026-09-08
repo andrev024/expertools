@@ -1,4 +1,17 @@
-ALTER TABLE orden_servicio ADD COLUMN ubicacion_actual VARCHAR(150) NULL AFTER estado_actual;
+SET @sql = (
+    SELECT IF(
+        COUNT(*) = 0,
+        'ALTER TABLE orden_servicio ADD COLUMN ubicacion_actual VARCHAR(150) NULL AFTER estado_actual',
+        'SELECT 1'
+    )
+    FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'orden_servicio'
+      AND COLUMN_NAME = 'ubicacion_actual'
+);
+PREPARE agregar_ubicacion FROM @sql;
+EXECUTE agregar_ubicacion;
+DEALLOCATE PREPARE agregar_ubicacion;
 
 UPDATE orden_servicio os
 JOIN (
