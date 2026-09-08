@@ -33,11 +33,20 @@ CREATE TABLE IF NOT EXISTS articulo (
     FOREIGN KEY (cliente_id) REFERENCES cliente(id)
 );
 
+CREATE TABLE IF NOT EXISTS accesorio (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    articulo_id INT NOT NULL,
+    nombre VARCHAR(150) NOT NULL,
+    descripcion VARCHAR(255) NULL,
+    creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (articulo_id) REFERENCES articulo(id) ON DELETE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS orden_servicio (
     id INT AUTO_INCREMENT PRIMARY KEY,
     codigo_seguimiento VARCHAR(20) NOT NULL UNIQUE,
     articulo_id INT NOT NULL,
-    tipo ENUM('mantenimiento', 'garantia') NOT NULL DEFAULT 'mantenimiento',
+    tipo ENUM('reparacion', 'garantia') NOT NULL DEFAULT 'reparacion',
     orden_original_id INT NULL,
     tecnico_asignado_id INT NULL,
     estado_actual VARCHAR(50) NOT NULL DEFAULT 'recibido',
@@ -56,6 +65,7 @@ CREATE TABLE IF NOT EXISTS cotizacion (
     repuestos TEXT,
     dictamen TEXT,
     monto DECIMAL(10,2) NOT NULL,
+    abono DECIMAL(10,2) NOT NULL DEFAULT 0,
     canal_aprobacion ENUM('presencial', 'whatsapp') NULL,
     estado ENUM('pendiente', 'aprobada', 'rechazada', 'sin_respuesta') NOT NULL DEFAULT 'pendiente',
     fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -69,7 +79,7 @@ CREATE TABLE IF NOT EXISTS historial_estado (
     estado VARCHAR(50) NOT NULL,
     comentario TEXT,
     fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    usuario_id INT NOT NULL,
+    usuario_id INT NULL,
     FOREIGN KEY (orden_id) REFERENCES orden_servicio(id),
     FOREIGN KEY (usuario_id) REFERENCES usuario(id),
     INDEX idx_orden (orden_id)

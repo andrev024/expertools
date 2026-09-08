@@ -10,6 +10,37 @@ const TRANSICIONES_SIMPLES = {
   finalizado_tecnico: ['en_revision_recepcion'],
 };
 
+function antiguedadEstado(fecha) {
+  if (!fecha) return null;
+  const horas = Math.max(0, Math.floor((Date.now() - new Date(fecha.replace(' ', 'T')).getTime()) / 3600000));
+  return { horas, clase: horas >= 48 ? 'alert-danger' : horas >= 24 ? 'alert-warning' : 'alert-success' };
+}
+
+function mostrarFecha(fecha) {
+  return fecha ? new Date(fecha.replace(' ', 'T')).toLocaleString('es-CO') : 'sin fecha';
+}
+
+function fechaEstado(orden) {
+  return orden.estado_desde || orden.fecha_ingreso;
+}
+
+function antiguedadIngreso(fecha) {
+  if (!fecha) return null;
+  const dias = Math.max(0, Math.floor((Date.now() - new Date(fecha.replace(' ', 'T')).getTime()) / 86400000));
+  return {
+    dias,
+    clase: dias >= 28 ? 'antiguedad-roja' : dias >= 14 ? 'antiguedad-naranja' : dias >= 7 ? 'antiguedad-amarilla' : '',
+  };
+}
+
+function coincideFiltroAntiguedad(fecha, filtro) {
+  if (filtro === 'todas') return true;
+  const dias = antiguedadIngreso(fecha)?.dias || 0;
+  if (filtro === 'una_semana') return dias >= 7;
+  if (filtro === 'dos_tres_semanas') return dias >= 14 && dias < 28;
+  return dias >= 28;
+}
+
 // Estados donde el tecnico tiene algo que hacer, en cualquiera de las 3 formas:
 // tomar la orden, diagnosticar/cotizar, responder por el cliente, o transicion simple.
 const ESTADOS_ACCIONABLES = [
@@ -18,6 +49,8 @@ const ESTADOS_ACCIONABLES = [
   'en_diagnostico',
   'cotizado',
   'esperando_respuesta',
+  'esperando_abono',
+  'esperando_tecnico',
   'en_reparacion',
   'esperando_repuesto',
   'finalizado_tecnico',
@@ -27,7 +60,9 @@ function PanelTecnico() {
   const [ordenes, setOrdenes] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState('');
-  const [comentarios, setComentarios] = useState({});
+  const [editandoUbicacion, setEditandoUbicacion] = useState(null);
+  const [ubicaciones, setUbicaciones] = useState({});
+  const [filtroAntiguedad, setFiltroAntiguedad] = useState('todas');
 
   // Formularios de cotizacion, uno por orden: { ordenId: {repuestos, dictamen, monto} }
   const [formsCotizacion, setFormsCotizacion] = useState({});
@@ -55,9 +90,24 @@ function PanelTecnico() {
         body: JSON.stringify({
           orden_id: ordenId,
           estado: nuevoEstado,
-          comentario: comentarios[ordenId] || '',
         }),
       });
+      cargarOrdenes();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  async function guardarUbicacion(ordenId) {
+    const ubicacion = (ubicaciones[ordenId] || '').trim();
+    if (!ubicacion) return;
+    setError('');
+    try {
+      await apiFetch('ordenes.php', {
+        method: 'PATCH',
+        body: JSON.stringify({ orden_id: ordenId, ubicacion }),
+      });
+      setEditandoUbicacion(null);
       cargarOrdenes();
     } catch (err) {
       setError(err.message);
@@ -117,6 +167,10 @@ function PanelTecnico() {
       (total, repuesto) => total + (Number(repuesto.cantidad) * Number(repuesto.montoUnitario)),
       0,
     );
+    if (Number(form.abono || 0) > montoTotal) {
+      setError('El abono no puede ser mayor que el total cotizado');
+      return;
+    }
     const ventanaWhatsapp = window.open('', '_blank');
 
     try {
@@ -127,21 +181,23 @@ function PanelTecnico() {
           repuestos: JSON.stringify(repuestos),
           dictamen: form.dictamen,
           monto: montoTotal,
+          abono: Number(form.abono || 0),
         }),
       });
       const telefono = String(orden?.cliente_telefono || '').replace(/\D/g, '');
       const telefonoWhatsapp = telefono.length === 10 && telefono.startsWith('3') ? `57${telefono}` : telefono;
       const mensaje = [
-        ` 👋 Hola ${orden?.cliente_nombre || 'cliente'}, te contactamos desde Expertools.`,
-        '- 📄 Te enviamos la cotización de tu servicio:',
+        `Hola ${orden?.cliente_nombre || 'cliente'}, te contactamos desde Expertools.`,
+        '✅ Cotización de servicio:',
         '',
-        `- 📌 Código de seguimiento: ${orden?.codigo_seguimiento || ordenId}`,
-        `- 💻 Artículo: ${orden?.articulo_tipo || ''}${orden?.marca ? ` ${orden.marca}` : ''}${orden?.modelo ? ` ${orden.modelo}` : ''}`,
-        `- 🔍 Diagnóstico: ${form.dictamen}`,
-        `- 🛠️ Repuestos: ${form.repuestos?.filter((repuesto) => repuesto.referencia.trim()).map((repuesto) => `${repuesto.referencia} (x${repuesto.cantidad})${repuesto.descripcion ? `: ${repuesto.descripcion}` : ''}`).join(', ') || 'No requiere repuestos'}`,
-        `- 💰Valor total: $${montoTotal.toLocaleString('es-CO')}`,
+        `Código: ${orden?.codigo_seguimiento || ordenId}`,
+        `Artículo: ${orden?.articulo_tipo || ''}${orden?.marca ? ` ${orden.marca}` : ''}${orden?.modelo ? ` ${orden.modelo}` : ''}`,
+        `Diagnóstico: ${form.dictamen}`,
+        `Repuestos: ${form.repuestos?.filter((repuesto) => repuesto.referencia.trim()).map((repuesto) => `${repuesto.referencia} (x${repuesto.cantidad})${repuesto.descripcion ? `: ${repuesto.descripcion}` : ''}`).join(', ') || 'No requiere repuestos'}`,
+        `Total: $${montoTotal.toLocaleString('es-CO')}`,
+        Number(form.abono || 0) > 0 ? `Abono requerido: $${Number(form.abono).toLocaleString('es-CO')}` : '',
         '',
-        ' ✍️ Por favor confírmanos si autorizas la reparación.',
+        'Por favor confírmanos por este medio si autorizas la reparación. El técnico registrará tu respuesta.',
       ].join('\n');
       const urlWhatsapp = `https://wa.me/${telefonoWhatsapp}?text=${encodeURIComponent(mensaje)}`;
       if (ventanaWhatsapp) {
@@ -177,11 +233,25 @@ function PanelTecnico() {
   return (
     <div className="operations-panel">
       <h2 className="h4 border-start border-4 ps-3">Órdenes por atender (orden de llegada)</h2>
+      <div className="d-flex align-items-center gap-2 mb-3">
+        <label className="fw-semibold" htmlFor="filtro-antiguedad-tecnico">Filtrar por antigüedad</label>
+        <select id="filtro-antiguedad-tecnico" className="form-select" style={{ maxWidth: '280px' }} value={filtroAntiguedad} onChange={(e) => setFiltroAntiguedad(e.target.value)}>
+          <option value="todas">Todas las órdenes</option>
+          <option value="una_semana">1 semana o más</option>
+          <option value="dos_tres_semanas">2 a 3 semanas</option>
+          <option value="cuatro_semanas">4 semanas o más</option>
+        </select>
+      </div>
+      <div className="antiguedad-leyenda" aria-label="Leyenda de antigüedad de órdenes">
+        <span><i className="leyenda-color antiguedad-amarilla" /> 1 semana</span>
+        <span><i className="leyenda-color antiguedad-naranja" /> 2 a 3 semanas</span>
+        <span><i className="leyenda-color antiguedad-roja" /> 4 semanas o más</span>
+      </div>
       {error && <p className="alert alert-danger">{error}</p>}
       {ordenes.length === 0 && <p className="alert alert-light border">No hay órdenes pendientes por ahora.</p>}
 
-      {ordenes.map((orden) => (
-        <div key={orden.id} className="order-card card shadow-sm rounded-3 border-0">
+      {ordenes.filter((orden) => coincideFiltroAntiguedad(orden.fecha_ingreso, filtroAntiguedad)).map((orden) => (
+        <div key={orden.id} className={`order-card card shadow-sm rounded-3 border-0 ${antiguedadIngreso(orden.fecha_ingreso)?.clase || ''}`}>
           <div className="order-card-header">
             <div>
               <span className="order-kicker">Trabajo en cola</span>
@@ -189,13 +259,29 @@ function PanelTecnico() {
             </div>
             <strong className="status-badge">{formatearEstado(orden.estado_actual)}</strong>
           </div>
+          {antiguedadEstado(fechaEstado(orden))?.horas >= 24 && <p className={`alert ${antiguedadEstado(fechaEstado(orden)).clase} py-2`}>Pendiente hace {antiguedadEstado(fechaEstado(orden)).horas} h</p>}
+          <p className="small text-secondary">Estado desde: {mostrarFecha(fechaEstado(orden))}</p>
+          {antiguedadIngreso(orden.fecha_ingreso)?.dias >= 7 && <p className={`alert antiguedad-aviso py-2 mb-2 ${antiguedadIngreso(orden.fecha_ingreso).clase}`}>Orden ingresada hace {antiguedadIngreso(orden.fecha_ingreso).dias} días</p>}
+          <div className="order-location mb-3">
+            <strong>Ubicación:</strong> {orden.ubicacion || 'Sin ubicación registrada'}
+            {editandoUbicacion === orden.id ? (
+              <div className="d-flex gap-2 mt-2">
+                <input className="form-control" type="text" placeholder="Ej. Repisa A-3" value={ubicaciones[orden.id] ?? orden.ubicacion ?? ''} onChange={(e) => setUbicaciones({ ...ubicaciones, [orden.id]: e.target.value })} />
+                <button type="button" className="button button-primary btn btn-primary" onClick={() => guardarUbicacion(orden.id)}>Guardar</button>
+                <button type="button" className="button button-secondary btn btn-outline-secondary" onClick={() => setEditandoUbicacion(null)}>Cancelar</button>
+              </div>
+            ) : (
+              <button type="button" className="button button-quiet ms-2" onClick={() => { setUbicaciones({ ...ubicaciones, [orden.id]: orden.ubicacion || '' }); setEditandoUbicacion(orden.id); }}>Cambiar ubicación</button>
+            )}
+          </div>
           <div className="order-summary-grid">
             <p><span>Cliente</span>{orden.cliente_nombre} <small>{orden.cliente_telefono}</small></p>
             <p><span>Artículo</span>{orden.articulo_tipo} {orden.marca || ''} {orden.modelo || ''}</p>
+            {orden.accesorios && <p><span>Accesorios</span>{orden.accesorios}</p>}
           </div>
 
           {/* Estado: recibido -> boton para tomar la orden */}
-          {(orden.estado_actual === 'recibido' || orden.estado_actual === 'sin_respuesta') && (
+          {(orden.estado_actual === 'recibido' || orden.estado_actual === 'sin_respuesta' || orden.estado_actual === 'esperando_tecnico') && (
             <button className="button button-primary btn btn-primary" onClick={() => tomarOrden(orden.id)}>Tomar orden (empezar diagnóstico)</button>
           )}
 
@@ -216,7 +302,7 @@ function PanelTecnico() {
                     <div className="col-md-3">
                       <input
                         className="form-control"
-                        placeholder="Referencia"
+                        placeholder="Nombre"
                         value={repuesto.referencia}
                         onChange={(e) => actualizarRepuesto(orden.id, indice, 'referencia', e.target.value)}
                       />
@@ -248,7 +334,7 @@ function PanelTecnico() {
                     <div className="col-md-2">
                       <input
                         className="form-control"
-                        placeholder="Descripción (opcional)"
+                        placeholder="Referencia (opcional)"
                         value={repuesto.descripcion}
                         onChange={(e) => actualizarRepuesto(orden.id, indice, 'descripcion', e.target.value)}
                       />
@@ -266,6 +352,15 @@ function PanelTecnico() {
                     .reduce((total, repuesto) => total + (Number(repuesto.cantidad || 0) * Number(repuesto.montoUnitario || 0)), 0))
                     .toLocaleString('es-CO')}
                 </p>
+                <input
+                  className="form-control mb-2"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="Abono requerido (opcional)"
+                  value={formsCotizacion[orden.id]?.abono || ''}
+                  onChange={(e) => actualizarFormCotizacion(orden.id, 'abono', e.target.value)}
+                />
                 <button type="button" className="button button-secondary btn btn-outline-secondary" onClick={() => agregarRepuesto(orden.id)}>
                   Agregar repuesto
                 </button>
@@ -291,14 +386,6 @@ function PanelTecnico() {
           {/* Estados con transicion simple */}
           {TRANSICIONES_SIMPLES[orden.estado_actual] && (
             <div>
-              <input
-                className="form-control mb-2"
-                type="text"
-                placeholder="Comentario (opcional)"
-                value={comentarios[orden.id] || ''}
-                onChange={(e) => setComentarios({ ...comentarios, [orden.id]: e.target.value })}
-                style={{ display: 'block', marginBottom: '6px', width: '100%' }}
-              />
               {TRANSICIONES_SIMPLES[orden.estado_actual].map((siguiente) => (
                 <button className="button button-secondary btn btn-outline-secondary" key={siguiente} onClick={() => cambiarEstadoSimple(orden.id, siguiente)} style={{ marginRight: '8px' }}>
                   Pasar a: {formatearEstado(siguiente)}

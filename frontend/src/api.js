@@ -1,4 +1,4 @@
-const API_BASE = 'https://expertools.onrender.com';
+export const API_BASE = 'https://expertools.onrender.com';
 
 // Función central para hacer peticiones a la API.
 // Agrega automáticamente el header Authorization si hay un token guardado.
@@ -16,7 +16,13 @@ export async function apiFetch(endpoint, opciones = {}) {
     headers,
   });
 
-  const datos = await respuesta.json();
+  const contenido = await respuesta.text();
+  let datos;
+  try {
+    datos = contenido ? JSON.parse(contenido) : {};
+  } catch {
+    throw new Error(`La API no devolvió JSON (HTTP ${respuesta.status}). Verifica que el backend esté actualizado.`);
+  }
 
   if (!respuesta.ok) {
     // Si el backend respondió con error (400, 401, 403, etc.),

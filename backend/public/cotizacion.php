@@ -7,7 +7,7 @@ use App\Middleware;
 
 header('Content-Type: application/json; charset=utf-8');
 
-$usuarioAuth = Middleware::requireAuth(['tecnico', 'admin']);
+$usuarioAuth = Middleware::requireAuth(['tecnico', 'recepcion', 'admin']);
 
 $pdo = Database::getConnection();
 $metodo = $_SERVER['REQUEST_METHOD'];
@@ -29,6 +29,7 @@ function registrarCotizacion(\PDO $pdo, object $usuarioAuth): void
     $repuestos = $datos['repuestos'] ?? null;
     $dictamen = $datos['dictamen'] ?? null;
     $monto = $datos['monto'] ?? null;
+    $abono = max(0, (float) ($datos['abono'] ?? 0));
 
     $listaRepuestos = json_decode($repuestos ?: '[]', true);
     if (!is_array($listaRepuestos)) {
@@ -68,10 +69,13 @@ function registrarCotizacion(\PDO $pdo, object $usuarioAuth): void
 
         // Comillas simples para 'pendiente' (ver nota en ordenes.php sobre ANSI_QUOTES)
         $stmtCotizacion = $pdo->prepare(
-            "INSERT INTO cotizacion (orden_id, repuestos, dictamen, monto, estado)
-             VALUES (?, ?, ?, ?, 'pendiente')"
+            "INSERT INTO cotizacion (orden_id, repuestos, dictamen, monto, abono, estado)
+             VALUES (?, ?, ?, ?, ?, 'pendiente')"
         );
-        $stmtCotizacion->execute([$ordenId, $repuestos, $dictamen, $monto]);
+        if ($abono > $monto) {
+            $abono = $monto;
+        }
+        $stmtCotizacion->execute([$ordenId, $repuestos, $dictamen, $monto, $abono]);
 
         $pdo->prepare("UPDATE orden_servicio SET estado_actual = 'cotizado' WHERE id = ?")
             ->execute([$ordenId]);
@@ -98,6 +102,7 @@ function responderCotizacion(\PDO $pdo, object $usuarioAuth): void
 
     $ordenId = $datos['orden_id'] ?? null;
     $respuesta = $datos['respuesta'] ?? null;
+    $comentario = trim((string) ($datos['comentario'] ?? ''));
     $canal = 'whatsapp';
 
     if (!$ordenId || !$respuesta) {
@@ -135,7 +140,14 @@ function responderCotizacion(\PDO $pdo, object $usuarioAuth): void
         }
 
         $estadoCotizacion = $respuesta === 'aprobada' ? 'aprobada' : 'rechazada';
-        $nuevoEstadoOrden = $respuesta === 'aprobada' ? 'en_reparacion' : 'no_autorizado';
+        $stmtAbono = $pdo->prepare('SELECT abono FROM cotizacion WHERE orden_id = ? ORDER BY id DESC LIMIT 1');
+        $stmtAbono->execute([$ordenId]);
+        $abonoRequerido = (float) ($stmtAbono->fetchColumn() ?: 0);
+        $nuevoEstadoOrden = $respuesta === 'aprobada'
+            ? ($abonoRequerido > 0
+                ? 'esperando_abono'
+                : ($usuarioAuth->rol === 'recepcion' ? 'esperando_tecnico' : 'en_reparacion'))
+            : 'no_autorizado';
 
         $pdo->prepare(
             'UPDATE cotizacion SET estado = ?, canal_aprobacion = ?, fecha_respuesta = NOW()
@@ -146,9 +158,9 @@ function responderCotizacion(\PDO $pdo, object $usuarioAuth): void
             ->execute([$nuevoEstadoOrden, $ordenId]);
 
         $pdo->prepare(
-            'INSERT INTO historial_estado (orden_id, estado, comentario, usuario_id)
-             VALUES (?, ?, ?, ?)'
-        )->execute([$ordenId, $nuevoEstadoOrden, "Cliente respondio: {$respuesta} (via {$canal})", $usuarioAuth->sub]);
+            "INSERT INTO historial_estado (orden_id, estado, comentario, usuario_id)
+             VALUES (?, ?, ?, ?)"
+        )->execute([$ordenId, $nuevoEstadoOrden, $comentario ?: "Cliente respondio: {$respuesta} (via {$canal})", $usuarioAuth->sub]);
 
         $pdo->commit();
         echo json_encode(['orden_id' => $ordenId, 'estado_nuevo' => $nuevoEstadoOrden]);

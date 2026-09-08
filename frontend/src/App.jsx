@@ -6,6 +6,7 @@ import PanelRecepcion from './components/PanelRecepcion';
 import PanelTecnico from './components/PanelTecnico';
 import Seguimiento from './components/Seguimiento';
 import { formatearRol } from './utils/textoUI';
+import GestionUsuarios from './components/GestionUsuarios';
 
 function Marca() {
   return (
@@ -26,6 +27,7 @@ function Encabezado({ usuario, logout }) {
               <span className="user-avatar">{usuario.nombre?.charAt(0).toUpperCase()}</span>
               <span className="user-details"><b>{usuario.nombre}</b><small>{formatearRol(usuario.rol)}</small></span>
             </div>
+            {(usuario.rol === 'recepcion' || usuario.rol === 'admin') && <Link className="users-link" to="/usuarios">Usuarios</Link>}
             <button className="button button-quiet btn btn-link" onClick={logout}>Cerrar sesión</button>
           </>
         ) : (
@@ -67,6 +69,29 @@ function Panel() {
   );
 }
 
+function PaginaUsuarios() {
+  const { usuario, logout } = useAuth();
+
+  if (!usuario || !['recepcion', 'admin'].includes(usuario.rol)) {
+    return <Navigate to="/panel" />;
+  }
+
+  return (
+    <div className="app-shell">
+      <Encabezado usuario={usuario} logout={logout} />
+      <main className="page-content container">
+        <div className="page-intro">
+          <span className="eyebrow text-uppercase fw-semibold">Expertools / administración</span>
+          <h1 className="display-5 fw-semibold">Gestión de usuarios</h1>
+          <p className="page-lead text-secondary">Administra las cuentas que pueden acceder al sistema.</p>
+        </div>
+        <GestionUsuarios />
+        <Link className="button button-secondary d-inline-block mt-4 text-decoration-none" to="/panel">Volver al panel</Link>
+      </main>
+    </div>
+  );
+}
+
 function App() {
   return (
     <AuthProvider>
@@ -79,6 +104,14 @@ function App() {
             element={
               <RutaProtegida>
                 <Panel />
+              </RutaProtegida>
+            }
+          />
+          <Route
+            path="/usuarios"
+            element={
+              <RutaProtegida>
+                <PaginaUsuarios />
               </RutaProtegida>
             }
           />

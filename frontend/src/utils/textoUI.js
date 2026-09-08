@@ -2,6 +2,8 @@ const ETIQUETAS_ESTADO = {
   recibido: 'Recibido',
   en_diagnostico: 'En diagnóstico',
   cotizado: 'Cotizado',
+  esperando_abono: 'Esperando abono',
+  esperando_tecnico: 'Esperando técnico',
   esperando_respuesta: 'En espera de respuesta',
   en_reparacion: 'En reparación',
   esperando_repuesto: 'Esperando repuesto',
@@ -19,7 +21,8 @@ const ETIQUETAS_ROL = {
 };
 
 const ETIQUETAS_TIPO_ORDEN = {
-  mantenimiento: 'Mantenimiento',
+  reparacion: 'Reparación',
+  mantenimiento: 'Reparación',
   garantia: 'Garantía',
 };
 

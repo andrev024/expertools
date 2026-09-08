@@ -30,6 +30,7 @@ function crearArticulo(\PDO $pdo): void
     $marca = $datos['marca'] ?? null;
     $modelo = $datos['modelo'] ?? null;
     $serial = $datos['serial'] ?? null;
+    $accesorios = is_array($datos['accesorios'] ?? null) ? $datos['accesorios'] : [];
 
     if (!$clienteId || !$tipo) {
         http_response_code(400);
@@ -37,14 +38,31 @@ function crearArticulo(\PDO $pdo): void
         return;
     }
 
-    $stmt = $pdo->prepare(
-        'INSERT INTO articulo (cliente_id, tipo, marca, modelo, serial) VALUES (?, ?, ?, ?, ?)'
-    );
-    $stmt->execute([$clienteId, $tipo, $marca, $modelo, $serial]);
+    $pdo->beginTransaction();
+    try {
+        $stmt = $pdo->prepare(
+            'INSERT INTO articulo (cliente_id, tipo, marca, modelo, serial) VALUES (?, ?, ?, ?, ?)'
+        );
+        $stmt->execute([$clienteId, $tipo, $marca, $modelo, $serial]);
+        $articuloId = $pdo->lastInsertId();
+        $stmtAccesorio = $pdo->prepare('INSERT INTO accesorio (articulo_id, nombre, descripcion) VALUES (?, ?, ?)');
+        foreach ($accesorios as $accesorio) {
+            $nombre = trim((string) ($accesorio['nombre'] ?? ''));
+            if ($nombre !== '') {
+                $stmtAccesorio->execute([$articuloId, $nombre, trim((string) ($accesorio['descripcion'] ?? '')) ?: null]);
+            }
+        }
+        $pdo->commit();
+    } catch (\Exception $e) {
+        $pdo->rollBack();
+        http_response_code(500);
+        echo json_encode(['error' => 'No se pudo crear el artículo']);
+        return;
+    }
 
     http_response_code(201);
     echo json_encode([
-        'id' => $pdo->lastInsertId(),
+        'id' => $articuloId,
         'tipo' => $tipo,
         'marca' => $marca,
         'modelo' => $modelo,
@@ -59,19 +77,21 @@ function listarArticulos(\PDO $pdo): void
 
     if ($clienteId) {
         $stmt = $pdo->prepare(
-            'SELECT a.*, c.nombre AS cliente_nombre
+                "SELECT a.*, c.nombre AS cliente_nombre,
+                    COALESCE((SELECT JSON_ARRAYAGG(JSON_OBJECT('id', ac.id, 'nombre', ac.nombre, 'descripcion', ac.descripcion)) FROM accesorio ac WHERE ac.articulo_id = a.id), JSON_ARRAY()) AS accesorios
              FROM articulo a
              JOIN cliente c ON c.id = a.cliente_id
              WHERE a.cliente_id = ?
-             ORDER BY a.creado_en DESC'
+             ORDER BY a.creado_en DESC"
         );
         $stmt->execute([$clienteId]);
     } else {
         $stmt = $pdo->query(
-            'SELECT a.*, c.nombre AS cliente_nombre
+                "SELECT a.*, c.nombre AS cliente_nombre,
+                    COALESCE((SELECT JSON_ARRAYAGG(JSON_OBJECT('id', ac.id, 'nombre', ac.nombre, 'descripcion', ac.descripcion)) FROM accesorio ac WHERE ac.articulo_id = a.id), JSON_ARRAY()) AS accesorios
              FROM articulo a
              JOIN cliente c ON c.id = a.cliente_id
-             ORDER BY a.creado_en DESC'
+             ORDER BY a.creado_en DESC"
         );
     }
 

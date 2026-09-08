@@ -198,7 +198,6 @@ Es una decisión de arquitectura real y defendible: para un negocio pequeño con
 
 ## Pendientes conocidos
 
-- Integración real de envío de WhatsApp (actualmente el registro de notificación se guarda en base de datos, sin conexión a la API de WhatsApp Business)
 - Generación de recibos imprimibles (ingreso y entrega)
 - Pulido visual/UX (ver `docs/pendientes_esteticos.md`)
 - Monitoreo activo (uptime monitoring) — evaluado, no implementado por decisión del autor

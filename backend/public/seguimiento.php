@@ -41,6 +41,8 @@ $mapaEstadosPublicos = [
     'en_revision_recepcion' => 'En reparación',
     'listo_para_entregar' => 'Listo para entregar',
     'entregado' => 'Entregado',
+    'chatarra' => 'En diagnóstico',
+    'no_autorizado' => 'Servicio no autorizado',
 ];
 
 $stmtHistorial = $pdo->prepare(
@@ -56,6 +58,9 @@ $lineaTiempoPublica = [];
 $ultimoEstadoPublico = null;
 
 foreach ($historial as $paso) {
+    if ($paso['estado'] === 'chatarra') {
+        continue;
+    }
     $estadoPublico = $mapaEstadosPublicos[$paso['estado']] ?? $paso['estado'];
     if ($estadoPublico !== $ultimoEstadoPublico) {
         $lineaTiempoPublica[] = [
@@ -68,6 +73,8 @@ foreach ($historial as $paso) {
 
 echo json_encode([
     'codigo_seguimiento' => $orden['codigo_seguimiento'],
-    'estado_actual' => $mapaEstadosPublicos[$orden['estado_actual']] ?? $orden['estado_actual'],
+    'estado_actual' => $orden['estado_actual'] === 'chatarra'
+        ? 'En diagnóstico'
+        : ($mapaEstadosPublicos[$orden['estado_actual']] ?? $orden['estado_actual']),
     'linea_tiempo' => $lineaTiempoPublica,
 ]);

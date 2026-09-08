@@ -22,6 +22,7 @@ function ClienteArticuloPicker({ onArticuloSeleccionado }) {
   const [tipoLibre, setTipoLibre] = useState('');
   const [marcaLibre, setMarcaLibre] = useState('');
   const [modeloLibre, setModeloLibre] = useState('');
+  const [accesorios, setAccesorios] = useState([{ nombre: '', descripcion: '' }]);
 
   // Marcas disponibles dependen del tipo elegido (mas la opcion "Otra")
   const marcasDisponibles = tipoSeleccionado && CATALOGO_ARTICULOS[tipoSeleccionado]
@@ -104,6 +105,7 @@ function ClienteArticuloPicker({ onArticuloSeleccionado }) {
           marca: marcaFinal,
           modelo: modeloFinal,
           serial,
+          accesorios: accesorios.filter((accesorio) => accesorio.nombre.trim()),
         }),
       });
 
@@ -263,6 +265,26 @@ function ClienteArticuloPicker({ onArticuloSeleccionado }) {
             onChange={(e) => setSerial(e.target.value)}
             style={{ display: 'block', marginBottom: '6px', width: '100%' }}
           />
+
+          <label>Accesorios recibidos</label>
+          {accesorios.map((accesorio, indice) => (
+            <div key={`accesorio-${indice}`} style={{ display: 'flex', gap: '8px', marginBottom: '6px' }}>
+              <input
+                placeholder="Ej. cargador, estuche, batería"
+                value={accesorio.nombre}
+                onChange={(e) => setAccesorios(accesorios.map((item, posicion) => posicion === indice ? { ...item, nombre: e.target.value } : item))}
+                style={{ flex: 1 }}
+              />
+              <input
+                placeholder="Detalle opcional"
+                value={accesorio.descripcion}
+                onChange={(e) => setAccesorios(accesorios.map((item, posicion) => posicion === indice ? { ...item, descripcion: e.target.value } : item))}
+                style={{ flex: 1 }}
+              />
+              <button type="button" onClick={() => setAccesorios(accesorios.filter((_, posicion) => posicion !== indice))}>Quitar</button>
+            </div>
+          ))}
+          <button type="button" onClick={() => setAccesorios([...accesorios, { nombre: '', descripcion: '' }])}>Agregar accesorio</button>
 
           <button type="button" onClick={crearClienteYArticulo}>
             {clienteSeleccionado ? 'Crear artículo' : 'Crear cliente y artículo'}

@@ -4,8 +4,36 @@ import ClienteArticuloPicker from './ClienteArticuloPicker';
 import HistorialOrden from './HistorialOrden';
 import { formatearEstado, formatearTipoOrden } from '../utils/textoUI';
 
+function antiguedadEstado(fecha) {
+  if (!fecha) return null;
+  const horas = Math.max(0, Math.floor((Date.now() - new Date(fecha.replace(' ', 'T')).getTime()) / 3600000));
+  const dias = Math.floor(horas / 24);
+  return {
+    horas,
+    dias,
+    clase: dias >= 28 ? 'antiguedad-roja' : dias >= 14 ? 'antiguedad-naranja' : dias >= 7 ? 'antiguedad-amarilla' : '',
+  };
+}
+
+function mostrarFecha(fecha) {
+  return fecha ? new Date(fecha.replace(' ', 'T')).toLocaleString('es-CO') : 'sin fecha';
+}
+
+function fechaEstado(orden) {
+  return orden.estado_desde || orden.fecha_ingreso;
+}
+
+function coincideFiltroAntiguedad(fecha, filtro) {
+  if (filtro === 'todas') return true;
+  const dias = antiguedadEstado(fecha)?.dias || 0;
+  if (filtro === 'una_semana') return dias >= 7;
+  if (filtro === 'dos_tres_semanas') return dias >= 14 && dias < 28;
+  return dias >= 28;
+}
+
 // En v2, recepcion ya NO cotiza -- solo recibe y hace la entrega final.
 const ACCIONES_RECEPCION = {
+  esperando_abono: ['esperando_tecnico'],
   en_revision_recepcion: ['listo_para_entregar'],
   listo_para_entregar: ['entregado'],
 };
@@ -18,8 +46,10 @@ function PanelRecepcion() {
 
   const [articuloId, setArticuloId] = useState(null);
   const [articuloDescripcion, setArticuloDescripcion] = useState('');
-  const [tipo, setTipo] = useState('mantenimiento');
+  const [tipo, setTipo] = useState('reparacion');
+  const [ubicacionInicial, setUbicacionInicial] = useState('');
   const [mensajeExito, setMensajeExito] = useState('');
+  const [filtroAntiguedad, setFiltroAntiguedad] = useState('todas');
 
   async function cargarOrdenes() {
     try {
@@ -81,6 +111,23 @@ function PanelRecepcion() {
     }
   }
 
+  async function responderCotizacion(ordenId, respuesta) {
+    setError('');
+    try {
+      await apiFetch('cotizacion.php', {
+        method: 'PATCH',
+        body: JSON.stringify({
+          orden_id: ordenId,
+          respuesta,
+          comentario: comentarios[ordenId] || '',
+        }),
+      });
+      cargarOrdenes();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
   async function crearOrden(e) {
     e.preventDefault();
     setError('');
@@ -94,12 +141,13 @@ function PanelRecepcion() {
     try {
       const resultado = await apiFetch('ordenes.php', {
         method: 'POST',
-        body: JSON.stringify({ articulo_id: articuloId, tipo }),
+        body: JSON.stringify({ articulo_id: articuloId, tipo, ubicacion: ubicacionInicial }),
       });
 
       setMensajeExito(`Orden creada: ${resultado.codigo_seguimiento}`);
       setArticuloId(null);
       setArticuloDescripcion('');
+      setUbicacionInicial('');
       cargarOrdenes();
     } catch (err) {
       setError(err.message);
@@ -129,15 +177,47 @@ function PanelRecepcion() {
             onChange={(e) => setTipo(e.target.value)}
             style={{ display: 'block', marginBottom: '8px' }}
           >
-            <option value="mantenimiento">Mantenimiento</option>
+            <option value="reparacion">Reparación</option>
             <option value="garantia">Garantía</option>
           </select>
         </div>
+        <label className="form-label fw-semibold" htmlFor="ubicacion-inicial">Stand o ubicación donde se deja</label>
+        <input
+          id="ubicacion-inicial"
+          className="form-control mb-3"
+          type="text"
+          placeholder="Ej. Repisa A-3"
+          value={ubicacionInicial}
+          onChange={(e) => setUbicacionInicial(e.target.value)}
+        />
         <button className="button button-primary btn btn-primary" type="submit" disabled={!articuloId}>Crear orden</button>
       </form>
 
       {mensajeExito && <p className="alert alert-success">{mensajeExito}</p>}
       {error && <p className="alert alert-danger">{error}</p>}
+
+      <h2 className="h4 border-start border-4 ps-3">Cotizaciones por confirmar</h2>
+      {ordenes.filter((orden) => ['cotizado', 'esperando_respuesta'].includes(orden.estado_actual)).map((orden) => (
+        <div key={`cotizacion-${orden.id}`} className="order-card card shadow-sm rounded-3 border-0">
+          <div className="order-card-header">
+            <div>
+              <span className="order-kicker">Respuesta del cliente</span>
+              <h3 className="h5">{orden.codigo_seguimiento}</h3>
+            </div>
+            <strong className="status-badge">{formatearEstado(orden.estado_actual)}</strong>
+          </div>
+          <p className="order-meta">{orden.cliente_nombre} · {orden.articulo_tipo} {orden.marca || ''}</p>
+          <input
+            type="text"
+            placeholder="Nota de la respuesta (opcional)"
+            value={comentarios[orden.id] || ''}
+            onChange={(e) => setComentarios({ ...comentarios, [orden.id]: e.target.value })}
+            style={{ display: 'block', marginBottom: '8px', width: '100%' }}
+          />
+          <button className="button button-primary btn btn-primary me-2" onClick={() => responderCotizacion(orden.id, 'aprobada')}>Cliente aprobó</button>
+          <button className="button button-danger btn btn-outline-danger" onClick={() => responderCotizacion(orden.id, 'rechazada')}>Cliente no aprobó</button>
+        </div>
+      ))}
 
       <h2 className="h4 border-start border-4 ps-3">Acciones pendientes (entrega)</h2>
       {ordenes
@@ -152,6 +232,8 @@ function PanelRecepcion() {
               <strong className="status-badge">{formatearEstado(orden.estado_actual)}</strong>
             </div>
             <p className="order-meta">{orden.cliente_nombre} · {orden.articulo_tipo} {orden.marca || ''}</p>
+            <p className="small text-secondary">Estado desde: {mostrarFecha(fechaEstado(orden))}</p>
+            {orden.accesorios && <p className="small text-secondary">Accesorios: {orden.accesorios}</p>}
             <input
               type="text"
               placeholder="Comentario"
@@ -174,6 +256,20 @@ function PanelRecepcion() {
         ))}
 
       <h2 className="h4 border-start border-4 ps-3">Todas las órdenes</h2>
+      <div className="d-flex align-items-center gap-2 mb-3">
+        <label className="fw-semibold" htmlFor="filtro-antiguedad-recepcion">Filtrar por antigüedad</label>
+        <select id="filtro-antiguedad-recepcion" className="form-select" style={{ maxWidth: '280px' }} value={filtroAntiguedad} onChange={(e) => setFiltroAntiguedad(e.target.value)}>
+          <option value="todas">Todas las órdenes</option>
+          <option value="una_semana">1 semana o más</option>
+          <option value="dos_tres_semanas">2 a 3 semanas</option>
+          <option value="cuatro_semanas">4 semanas o más</option>
+        </select>
+      </div>
+      <div className="antiguedad-leyenda" aria-label="Leyenda de antigüedad">
+        <span><i className="leyenda-color antiguedad-amarilla" /> 1 semana</span>
+        <span><i className="leyenda-color antiguedad-naranja" /> 2 a 3 semanas</span>
+        <span><i className="leyenda-color antiguedad-roja" /> 4 semanas o más</span>
+      </div>
       {cargando ? (
         <p>Cargando...</p>
       ) : (
@@ -190,12 +286,12 @@ function PanelRecepcion() {
               </tr>
             </thead>
             <tbody>
-              {ordenes.map((orden) => (
-                <tr key={orden.id}>
+              {ordenes.filter((orden) => coincideFiltroAntiguedad(orden.fecha_ingreso, filtroAntiguedad)).map((orden) => (
+                <tr key={orden.id} className={antiguedadEstado(fechaEstado(orden))?.clase}>
                   <td data-label="Código">{orden.codigo_seguimiento}</td>
                   <td data-label="Artículo">{orden.articulo_tipo} {orden.marca}</td>
                   <td data-label="Cliente">{orden.cliente_nombre}</td>
-                  <td data-label="Estado"><span className="status-badge">{formatearEstado(orden.estado_actual)}</span></td>
+                  <td data-label="Estado"><span className="status-badge">{formatearEstado(orden.estado_actual)}</span><small className="d-block mt-1">Desde {mostrarFecha(fechaEstado(orden))}</small>{antiguedadEstado(fechaEstado(orden))?.horas >= 24 && <small className="d-block">{antiguedadEstado(fechaEstado(orden)).horas} h pendiente</small>}</td>
                   <td data-label="Tipo">{formatearTipoOrden(orden.tipo)}</td>
                   <td data-label="Historial"><HistorialOrden ordenId={orden.id} /></td>
                 </tr>

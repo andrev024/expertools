@@ -20,7 +20,7 @@ function env(string $key, $default = null)
 // (localhost:8000). Se centraliza aquí para no repetirlo en cada endpoint.
 // ============================================
 header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: GET, POST, PATCH, OPTIONS');
+header('Access-Control-Allow-Methods: GET, POST, PATCH, PUT, DELETE, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization');
 
 // El navegador manda una petición "OPTIONS" de prueba antes de peticiones
