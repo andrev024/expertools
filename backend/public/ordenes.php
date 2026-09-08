@@ -71,9 +71,7 @@ function crearOrden(\PDO $pdo, object $usuarioAuth): void
         );
         $stmtAccesorios->execute([$articuloId]);
         $accesorios = trim((string) ($stmtAccesorios->fetchColumn() ?: ''));
-        $comentarioRecepcion = $ubicacion
-            ? "Articulo recibido en recepcion. Ubicacion: {$ubicacion}"
-            : 'Articulo recibido en recepcion. Ubicacion pendiente';
+        $comentarioRecepcion = 'Articulo recibido en recepcion';
         if ($accesorios !== '') {
             $comentarioRecepcion .= ". Accesorios: {$accesorios}";
         }

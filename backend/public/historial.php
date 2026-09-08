@@ -44,10 +44,13 @@ try {
 
 $historial = $stmt->fetchAll();
 foreach ($historial as &$paso) {
-    if ($paso['estado'] === 'recibido' && $paso['accesorios'] !== ''
-        && stripos((string) $paso['comentario'], 'accesorios:') === false) {
-        $paso['comentario'] = rtrim((string) $paso['comentario'], '.')
-            . '. Accesorios: ' . $paso['accesorios'];
+    if ($paso['estado'] === 'recibido') {
+        $paso['comentario'] = preg_replace('/\.?\s*Ubicacion:\s*.*?(?=\.?\s*Accesorios:|$)/i', '', (string) $paso['comentario']);
+        if ($paso['accesorios'] !== '' && stripos($paso['comentario'], 'accesorios:') === false) {
+            $paso['comentario'] = rtrim($paso['comentario'], '.')
+                . '. Accesorios: ' . $paso['accesorios'];
+        }
+        $paso['comentario'] = trim($paso['comentario']);
     }
     unset($paso['accesorios']);
 }

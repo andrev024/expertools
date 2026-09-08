@@ -77,18 +77,19 @@ function registrarCotizacion(\PDO $pdo, object $usuarioAuth): void
         }
         $stmtCotizacion->execute([$ordenId, $repuestos, $dictamen, $monto, $abono]);
 
-        $pdo->prepare("UPDATE orden_servicio SET estado_actual = 'cotizado' WHERE id = ?")
-            ->execute([$ordenId]);
+        $estadoInicial = $abono > 0 ? 'esperando_abono' : 'cotizado';
+        $pdo->prepare('UPDATE orden_servicio SET estado_actual = ? WHERE id = ?')
+            ->execute([$estadoInicial, $ordenId]);
 
         $pdo->prepare(
             "INSERT INTO historial_estado (orden_id, estado, comentario, usuario_id)
-             VALUES (?, 'cotizado', ?, ?)"
-        )->execute([$ordenId, "Cotización: {$dictamen} - $" . $monto, $usuarioAuth->sub]);
+             VALUES (?, ?, ?, ?)"
+        )->execute([$ordenId, $estadoInicial, "Cotización: {$dictamen} - $" . $monto, $usuarioAuth->sub]);
 
         $pdo->commit();
 
         http_response_code(201);
-        echo json_encode(['orden_id' => $ordenId, 'estado_nuevo' => 'cotizado']);
+        echo json_encode(['orden_id' => $ordenId, 'estado_nuevo' => $estadoInicial]);
     } catch (\Exception $e) {
         $pdo->rollBack();
         error_log('Error al registrar cotizacion: ' . $e->getMessage());

@@ -36,6 +36,7 @@ class Database
 
             try {
                 self::$instance = new PDO($dsn, $user, $pass, $opciones);
+                self::$instance->exec("SET time_zone = '-05:00'");
             } catch (PDOException $e) {
                 http_response_code(500);
                 die(json_encode(['error' => 'Error de conexión a la base de datos']));

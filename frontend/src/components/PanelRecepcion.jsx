@@ -6,7 +6,7 @@ import { formatearEstado, formatearTipoOrden } from '../utils/textoUI';
 
 function antiguedadEstado(fecha) {
   if (!fecha) return null;
-  const horas = Math.max(0, Math.floor((Date.now() - new Date(fecha.replace(' ', 'T')).getTime()) / 3600000));
+  const horas = Math.max(0, Math.floor((Date.now() - parsearFechaBogota(fecha).getTime()) / 3600000));
   const dias = Math.floor(horas / 24);
   return {
     horas,
@@ -16,7 +16,11 @@ function antiguedadEstado(fecha) {
 }
 
 function mostrarFecha(fecha) {
-  return fecha ? new Date(fecha.replace(' ', 'T')).toLocaleString('es-CO') : 'sin fecha';
+  return fecha ? parsearFechaBogota(fecha).toLocaleString('es-CO', { timeZone: 'America/Bogota' }) : 'sin fecha';
+}
+
+function parsearFechaBogota(fecha) {
+  return new Date(`${fecha.replace(' ', 'T')}-05:00`);
 }
 
 function fechaEstado(orden) {
@@ -73,13 +77,13 @@ function PanelRecepcion() {
     const telefono = String(orden.cliente_telefono || '').replace(/\D/g, '');
     const telefonoWhatsapp = telefono.length === 10 && telefono.startsWith('3') ? `57${telefono}` : telefono;
     const mensaje = [
-      `👋 Hola ${orden.cliente_nombre}, te contactamos desde Expertools.`,
-      '⚙️ Tu equipo ya está listo para entregar.',
+      ` Hola ${orden.cliente_nombre}, te contactamos desde Expertools.`,
+      ' Tu equipo ya está listo para entregar.',
       '',
-      `- 🆔 Código de seguimiento: ${orden.codigo_seguimiento}`,
+      `-  Código de seguimiento: ${orden.codigo_seguimiento}`,
       `- Artículo: ${orden.articulo_tipo}${orden.marca ? ` ${orden.marca}` : ''}${orden.modelo ? ` ${orden.modelo}` : ''}`,
       '',
-      '💬 Por favor, acércate a Expertools para recoger tu equipo.',
+      ' Por favor, acércate a Expertools para recoger tu equipo.',
       '',
       'Instagram: https://www.instagram.com/expertools_herramientas',
       'Ubicación: https://www.google.com/maps/search/?api=1&query=ExperTools%20Reparaci%C3%B3n%20Mantenimiento%20y%20Venta%20de%20Herramientas%2C%20Bogot%C3%A1',
@@ -239,7 +243,7 @@ function PanelRecepcion() {
         </div>
       ))}
 
-      <h2 className="h4 border-start border-4 ps-3">Acciones pendientes (entrega)</h2>
+      <h2 className="h4 border-start border-4 ps-3">Acciones pendientes </h2>
       {ordenes
         .filter((o) => ACCIONES_RECEPCION[o.estado_actual])
         .map((orden) => (

@@ -7,7 +7,7 @@ class MaquinaEstados
     // Transiciones permitidas: estado_actual => [estados_a_los_que_puede_pasar]
     private static array $transiciones = [
         'recibido' => ['en_diagnostico'],
-        'en_diagnostico' => ['chatarra', 'cotizado'],
+        'en_diagnostico' => ['chatarra', 'cotizado', 'esperando_abono'],
         'cotizado' => ['en_reparacion', 'esperando_abono', 'esperando_tecnico', 'no_autorizado', 'esperando_respuesta', 'sin_respuesta'],
         'esperando_abono' => ['en_reparacion', 'esperando_tecnico', 'no_autorizado'],
         'esperando_tecnico' => ['en_diagnostico'],

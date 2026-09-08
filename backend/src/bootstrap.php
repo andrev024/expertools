@@ -8,6 +8,7 @@ require_once __DIR__ . '/../vendor/autoload.php';
 // archivo .env físico dentro del contenedor (nunca metemos secretos en la imagen).
 $dotenv = Dotenv\Dotenv::createImmutable(__DIR__ . '/..');
 $dotenv->safeLoad();
+date_default_timezone_set('America/Bogota');
 
 // Helper centralizado para leer variables de entorno.
 function env(string $key, $default = null)

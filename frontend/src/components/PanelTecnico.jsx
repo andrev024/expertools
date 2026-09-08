@@ -13,12 +13,16 @@ const TRANSICIONES_SIMPLES = {
 
 function antiguedadEstado(fecha) {
   if (!fecha) return null;
-  const horas = Math.max(0, Math.floor((Date.now() - new Date(fecha.replace(' ', 'T')).getTime()) / 3600000));
+  const horas = Math.max(0, Math.floor((Date.now() - parsearFechaBogota(fecha).getTime()) / 3600000));
   return { horas, clase: horas >= 48 ? 'alert-danger' : horas >= 24 ? 'alert-warning' : 'alert-success' };
 }
 
 function mostrarFecha(fecha) {
-  return fecha ? new Date(fecha.replace(' ', 'T')).toLocaleString('es-CO') : 'sin fecha';
+  return fecha ? parsearFechaBogota(fecha).toLocaleString('es-CO', { timeZone: 'America/Bogota' }) : 'sin fecha';
+}
+
+function parsearFechaBogota(fecha) {
+  return new Date(`${fecha.replace(' ', 'T')}-05:00`);
 }
 
 function fechaEstado(orden) {
@@ -27,7 +31,7 @@ function fechaEstado(orden) {
 
 function antiguedadIngreso(fecha) {
   if (!fecha) return null;
-  const dias = Math.max(0, Math.floor((Date.now() - new Date(fecha.replace(' ', 'T')).getTime()) / 86400000));
+  const dias = Math.max(0, Math.floor((Date.now() - parsearFechaBogota(fecha).getTime()) / 86400000));
   return {
     dias,
     clase: dias >= 28 ? 'antiguedad-roja' : dias >= 14 ? 'antiguedad-naranja' : dias >= 7 ? 'antiguedad-amarilla' : '',
@@ -195,17 +199,17 @@ function PanelTecnico() {
       const telefono = String(orden?.cliente_telefono || '').replace(/\D/g, '');
       const telefonoWhatsapp = telefono.length === 10 && telefono.startsWith('3') ? `57${telefono}` : telefono;
       const mensaje = [
-        `👋 Hola ${orden?.cliente_nombre || 'cliente'}, te contactamos desde Expertools.`,
-        '**📋 Cotización de servicio: **',
+        ` Hola ${orden?.cliente_nombre || 'cliente'}, te contactamos desde Expertools.`,
+        '** Cotización de servicio: **',
         '',
-        `🆔 Código: ${orden?.codigo_seguimiento || ordenId}`,
-        `⚙️ Artículo: ${orden?.articulo_tipo || ''}${orden?.marca ? ` ${orden.marca}` : ''}${orden?.modelo ? ` ${orden.modelo}` : ''}`,
-        `🔍 Diagnóstico: ${form.dictamen}`,
-        `📦 Repuestos: ${form.repuestos?.filter((repuesto) => repuesto.referencia.trim()).map((repuesto) => `${repuesto.referencia} (x${repuesto.cantidad})${repuesto.descripcion ? `: ${repuesto.descripcion}` : ''}`).join(', ') || 'No requiere repuestos'}`,
+        ` Código: ${orden?.codigo_seguimiento || ordenId}`,
+        ` Artículo: ${orden?.articulo_tipo || ''}${orden?.marca ? ` ${orden.marca}` : ''}${orden?.modelo ? ` ${orden.modelo}` : ''}`,
+        ` Diagnóstico: ${form.dictamen}`,
+        ` Repuestos: ${form.repuestos?.filter((repuesto) => repuesto.referencia.trim()).map((repuesto) => `${repuesto.referencia} (x${repuesto.cantidad})${repuesto.descripcion ? `: ${repuesto.descripcion}` : ''}`).join(', ') || 'No requiere repuestos'}`,
         `💰 Total: $${montoTotal.toLocaleString('es-CO')}`,
         Number(form.abono || 0) > 0 ? `⚠️ Abono requerido: $${Number(form.abono).toLocaleString('es-CO')}` : '',
         '',
-        '💬 Por favor confírmanos por este medio si autorizas la reparación, recuerda que la reparacion no inicia si no se recibe el abono. El técnico registrará tu respuesta.',
+        ' Por favor confírmanos por este medio si autorizas la reparación, recuerda que la reparacion no inicia si no se recibe el abono en caso de que lo requiera. ',
         '',
         'Instagram: https://www.instagram.com/expertools_herramientas',
         'Ubicación: https://www.google.com/maps/search/?api=1&query=ExperTools%20Reparaci%C3%B3n%20Mantenimiento%20y%20Venta%20de%20Herramientas%2C%20Bogot%C3%A1',
