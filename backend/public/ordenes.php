@@ -44,7 +44,7 @@ function crearOrden(\PDO $pdo, object $usuarioAuth): void
         return;
     }
 
-    $codigoSeguimiento = GeneradorCodigo::generarCodigoSeguimiento();
+    $codigoSeguimiento = GeneradorCodigo::generarCodigoSeguimiento($pdo);
 
     $pdo->beginTransaction();
 
