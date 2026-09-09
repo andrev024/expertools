@@ -77,7 +77,7 @@ function PanelRecepcion() {
     const telefono = String(orden.cliente_telefono || '').replace(/\D/g, '');
     const telefonoWhatsapp = telefono.length === 10 && telefono.startsWith('3') ? `57${telefono}` : telefono;
     const mensaje = [
-      ` Hola ${orden.cliente_nombre}, te contactamos desde Expertools.`,
+      ` Hola ${orden.cliente_nombre || orden.cliente_empresa || 'cliente'}, te contactamos desde Expertools.`,
       ' Tu equipo ya está listo para entregar.',
       '',
       `-  Código de seguimiento: ${orden.codigo_seguimiento}`,
@@ -235,7 +235,7 @@ function PanelRecepcion() {
               Orden ingresada hace {antiguedadEstado(orden.fecha_ingreso).dias} días
             </p>
           )}
-          <p className="order-meta">{orden.cliente_nombre} · {orden.articulo_tipo} {orden.marca || ''}</p>
+          <p className="order-meta">{orden.cliente_nombre || orden.cliente_empresa || 'Cliente sin nombre'} · {orden.articulo_tipo} {orden.marca || ''}</p>
           <input
             type="text"
             placeholder="Nota de la respuesta (opcional)"
@@ -260,7 +260,7 @@ function PanelRecepcion() {
               </div>
               <strong className="status-badge">{formatearEstado(orden.estado_actual)}</strong>
             </div>
-            <p className="order-meta">{orden.cliente_nombre} · {orden.articulo_tipo} {orden.marca || ''}</p>
+            <p className="order-meta">{orden.cliente_nombre || orden.cliente_empresa || 'Cliente sin nombre'} · {orden.articulo_tipo} {orden.marca || ''}</p>
             <p className="small text-secondary">Estado desde: {mostrarFecha(fechaEstado(orden))}</p>
             {orden.accesorios && <p className="small text-secondary">Accesorios: {orden.accesorios}</p>}
             <div className="order-location mb-3">
@@ -332,7 +332,7 @@ function PanelRecepcion() {
                 <tr key={orden.id} className={antiguedadEstado(orden.fecha_ingreso)?.clase}>
                   <td data-label="Código">{orden.codigo_seguimiento}</td>
                   <td data-label="Artículo">{orden.articulo_tipo} {orden.marca}</td>
-                  <td data-label="Cliente">{orden.cliente_nombre}</td>
+                  <td data-label="Cliente">{orden.cliente_nombre || orden.cliente_empresa || 'Cliente sin nombre'}</td>
                   <td data-label="Ubicación">
                     <strong>{orden.ubicacion || 'Sin ubicación'}</strong>
                     {editandoUbicacion === orden.id ? (

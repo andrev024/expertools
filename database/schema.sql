@@ -16,8 +16,11 @@ CREATE TABLE IF NOT EXISTS usuario (
 
 CREATE TABLE IF NOT EXISTS cliente (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    nombre VARCHAR(150) NOT NULL,
-    telefono VARCHAR(20) NOT NULL,
+    nombre VARCHAR(150) NULL,
+    empresa VARCHAR(150) NULL,
+    correo VARCHAR(150) NULL,
+    telefono VARCHAR(30) NULL,
+    direccion VARCHAR(255) NULL,
     cedula VARCHAR(20) NULL,
     creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -51,6 +54,7 @@ CREATE TABLE IF NOT EXISTS orden_servicio (
     tecnico_asignado_id INT NULL,
     estado_actual VARCHAR(50) NOT NULL DEFAULT 'recibido',
     ubicacion_actual VARCHAR(150) NULL,
+    observaciones TEXT NULL,
     intentos_contacto_cliente INT NOT NULL DEFAULT 0,
     fecha_ingreso TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     fecha_entrega TIMESTAMP NULL,
@@ -66,12 +70,26 @@ CREATE TABLE IF NOT EXISTS cotizacion (
     repuestos TEXT,
     dictamen TEXT,
     monto DECIMAL(10,2) NOT NULL,
+    subtotal DECIMAL(12,2) NULL,
+    iva DECIMAL(12,2) NULL DEFAULT 0,
     abono DECIMAL(10,2) NOT NULL DEFAULT 0,
     canal_aprobacion ENUM('presencial', 'whatsapp') NULL,
     estado ENUM('pendiente', 'aprobada', 'rechazada', 'sin_respuesta') NOT NULL DEFAULT 'pendiente',
     fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     fecha_respuesta TIMESTAMP NULL,
     FOREIGN KEY (orden_id) REFERENCES orden_servicio(id)
+);
+
+CREATE TABLE IF NOT EXISTS cotizacion_detalle (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    cotizacion_id INT NOT NULL,
+    item_n INT NULL,
+    codigo VARCHAR(50) NULL,
+    cantidad DECIMAL(10,2) NOT NULL DEFAULT 1,
+    descripcion VARCHAR(255) NOT NULL,
+    precio_unitario DECIMAL(12,2) NULL,
+    precio_total DECIMAL(12,2) NOT NULL,
+    FOREIGN KEY (cotizacion_id) REFERENCES cotizacion(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS historial_estado (

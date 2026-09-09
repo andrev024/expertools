@@ -136,7 +136,7 @@ function ClienteArticuloPicker({ onArticuloSeleccionado }) {
         <ul>
           {clientes.map((c) => (
             <li key={c.id}>
-              {c.nombre} ({c.telefono}){' '}
+              {c.nombre || c.empresa || 'Cliente sin nombre'} ({c.telefono || 'sin teléfono'}){' '}
               <button type="button" onClick={() => seleccionarCliente(c)}>Seleccionar</button>
             </li>
           ))}

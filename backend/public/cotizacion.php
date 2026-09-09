@@ -7,6 +7,8 @@ use App\Middleware;
 
 header('Content-Type: application/json; charset=utf-8');
 
+const IVA_COLOMBIA = 0.19;
+
 $usuarioAuth = Middleware::requireAuth(['tecnico', 'recepcion', 'admin']);
 
 $pdo = Database::getConnection();
@@ -28,23 +30,24 @@ function registrarCotizacion(\PDO $pdo, object $usuarioAuth): void
     $ordenId = $datos['orden_id'] ?? null;
     $repuestos = $datos['repuestos'] ?? null;
     $dictamen = $datos['dictamen'] ?? null;
-    $monto = $datos['monto'] ?? null;
     $abono = max(0, (float) ($datos['abono'] ?? 0));
 
     $listaRepuestos = json_decode($repuestos ?: '[]', true);
     if (!is_array($listaRepuestos)) {
         $listaRepuestos = [];
     }
-    $monto = 0;
+    $subtotal = 0;
     foreach ($listaRepuestos as &$repuesto) {
         $cantidad = (int) ($repuesto['cantidad'] ?? 0);
         $montoUnitario = (float) ($repuesto['montoUnitario'] ?? 0);
         $repuesto['cantidad'] = $cantidad;
         $repuesto['montoUnitario'] = $montoUnitario;
         $repuesto['total'] = $cantidad * $montoUnitario;
-        $monto += $repuesto['total'];
+        $subtotal += $repuesto['total'];
     }
     unset($repuesto);
+    $iva = round($subtotal * IVA_COLOMBIA, 2);
+    $monto = round($subtotal + $iva, 2);
     $repuestos = json_encode($listaRepuestos, JSON_UNESCAPED_UNICODE);
 
     if (!$ordenId || !$dictamen) {
@@ -68,14 +71,37 @@ function registrarCotizacion(\PDO $pdo, object $usuarioAuth): void
         }
 
         // Comillas simples para 'pendiente' (ver nota en ordenes.php sobre ANSI_QUOTES)
-        $stmtCotizacion = $pdo->prepare(
-            "INSERT INTO cotizacion (orden_id, repuestos, dictamen, monto, abono, estado)
-             VALUES (?, ?, ?, ?, ?, 'pendiente')"
-        );
         if ($abono > $monto) {
             $abono = $monto;
         }
-        $stmtCotizacion->execute([$ordenId, $repuestos, $dictamen, $monto, $abono]);
+        $stmtCotizacion = $pdo->prepare(
+            "INSERT INTO cotizacion
+                (orden_id, repuestos, dictamen, monto, subtotal, iva, abono, estado)
+             VALUES (?, ?, ?, ?, ?, ?, ?, 'pendiente')"
+        );
+        $stmtCotizacion->execute([$ordenId, $repuestos, $dictamen, $monto, $subtotal, $iva, $abono]);
+        $cotizacionId = $pdo->lastInsertId();
+
+        $stmtDetalle = $pdo->prepare(
+            'INSERT INTO cotizacion_detalle
+                (cotizacion_id, item_n, codigo, cantidad, descripcion, precio_unitario, precio_total)
+             VALUES (?, ?, ?, ?, ?, ?, ?)'
+        );
+        foreach ($listaRepuestos as $indice => $repuesto) {
+            $cantidad = (float) $repuesto['cantidad'];
+            $precioUnitario = (float) $repuesto['montoUnitario'];
+            $descripcion = trim((string) ($repuesto['descripcion'] ?? ''));
+            $codigo = trim((string) ($repuesto['referencia'] ?? ''));
+            $stmtDetalle->execute([
+                $cotizacionId,
+                $indice + 1,
+                $codigo !== '' ? $codigo : null,
+                $cantidad,
+                $descripcion !== '' ? $descripcion : 'Repuesto o servicio',
+                $precioUnitario,
+                $cantidad * $precioUnitario,
+            ]);
+        }
 
         $estadoInicial = $abono > 0 ? 'esperando_abono' : 'cotizado';
         $pdo->prepare('UPDATE orden_servicio SET estado_actual = ? WHERE id = ?')
@@ -89,7 +115,13 @@ function registrarCotizacion(\PDO $pdo, object $usuarioAuth): void
         $pdo->commit();
 
         http_response_code(201);
-        echo json_encode(['orden_id' => $ordenId, 'estado_nuevo' => $estadoInicial]);
+        echo json_encode([
+            'orden_id' => $ordenId,
+            'estado_nuevo' => $estadoInicial,
+            'subtotal' => $subtotal,
+            'iva' => $iva,
+            'monto' => $monto,
+        ]);
     } catch (\Exception $e) {
         $pdo->rollBack();
         error_log('Error al registrar cotizacion: ' . $e->getMessage());

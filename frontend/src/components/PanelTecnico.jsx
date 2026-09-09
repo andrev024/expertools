@@ -3,6 +3,8 @@ import { apiFetch } from '../api';
 import { formatearEstado } from '../utils/textoUI';
 import HistorialOrden from './HistorialOrden';
 
+const IVA_COLOMBIA = 0.19;
+
 // Transiciones simples (via cambiar_estado.php) que no requieren formulario extra
 const TRANSICIONES_SIMPLES = {
   esperando_abono: ['en_reparacion'],
@@ -179,7 +181,9 @@ function PanelTecnico() {
       (total, repuesto) => total + (Number(repuesto.cantidad) * Number(repuesto.montoUnitario)),
       0,
     );
-    if (Number(form.abono || 0) > montoTotal) {
+    const iva = Math.round(montoTotal * IVA_COLOMBIA * 100) / 100;
+    const totalConIva = montoTotal + iva;
+    if (Number(form.abono || 0) > totalConIva) {
       setError('El abono no puede ser mayor que el total cotizado');
       return;
     }
@@ -192,7 +196,7 @@ function PanelTecnico() {
           orden_id: ordenId,
           repuestos: JSON.stringify(repuestos),
           dictamen: form.dictamen,
-          monto: montoTotal,
+          monto: totalConIva,
           abono: Number(form.abono || 0),
         }),
       });
@@ -206,7 +210,9 @@ function PanelTecnico() {
         ` Artículo: ${orden?.articulo_tipo || ''}${orden?.marca ? ` ${orden.marca}` : ''}${orden?.modelo ? ` ${orden.modelo}` : ''}`,
         ` Diagnóstico: ${form.dictamen}`,
         ` Repuestos: ${form.repuestos?.filter((repuesto) => repuesto.referencia.trim()).map((repuesto) => `${repuesto.referencia} (x${repuesto.cantidad})${repuesto.descripcion ? `: ${repuesto.descripcion}` : ''}`).join(', ') || 'No requiere repuestos'}`,
-        `💰 Total: $${montoTotal.toLocaleString('es-CO')}`,
+        ` Subtotal: $${montoTotal.toLocaleString('es-CO')}`,
+        ` IVA (19%): $${iva.toLocaleString('es-CO')}`,
+        ` Total: $${totalConIva.toLocaleString('es-CO')}`,
         Number(form.abono || 0) > 0 ? `⚠️ Abono requerido: $${Number(form.abono).toLocaleString('es-CO')}` : '',
         '',
         ' Por favor confírmanos por este medio si autorizas la reparación, recuerda que la reparacion no inicia si no se recibe el abono en caso de que lo requiera. ',
@@ -290,7 +296,7 @@ function PanelTecnico() {
             )}
           </div>
           <div className="order-summary-grid">
-            <p><span>Cliente</span>{orden.cliente_nombre} <small>{orden.cliente_telefono}</small></p>
+            <p><span>Cliente</span>{orden.cliente_nombre || orden.cliente_empresa || 'Cliente sin nombre'} <small>{orden.cliente_telefono || 'sin teléfono'}</small></p>
             <p><span>Artículo</span>{orden.articulo_tipo} {orden.marca || ''} {orden.modelo || ''}</p>
             {orden.accesorios && <p><span>Accesorios</span>{orden.accesorios}</p>}
           </div>
@@ -362,11 +368,23 @@ function PanelTecnico() {
                   </div>
                 ))}
                 <p className="fw-semibold">
-                  Total cotizado: ${(obtenerRepuestos(orden.id)
+                  Subtotal: ${(obtenerRepuestos(orden.id)
                     .filter((repuesto) => repuesto.referencia.trim())
                     .reduce((total, repuesto) => total + (Number(repuesto.cantidad || 0) * Number(repuesto.montoUnitario || 0)), 0))
                     .toLocaleString('es-CO')}
                 </p>
+                {(() => {
+                  const subtotal = obtenerRepuestos(orden.id)
+                    .filter((repuesto) => repuesto.referencia.trim())
+                    .reduce((total, repuesto) => total + (Number(repuesto.cantidad || 0) * Number(repuesto.montoUnitario || 0)), 0);
+                  const iva = Math.round(subtotal * IVA_COLOMBIA * 100) / 100;
+                  return (
+                    <p className="mb-2">
+                      IVA (19%): ${iva.toLocaleString('es-CO')}<br />
+                      <strong>Total con IVA: ${(subtotal + iva).toLocaleString('es-CO')}</strong>
+                    </p>
+                  );
+                })()}
                 <input
                   className="form-control mb-2"
                   type="number"

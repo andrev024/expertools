@@ -26,23 +26,31 @@ function crearCliente(\PDO $pdo): void
     $datos = json_decode(file_get_contents('php://input'), true);
 
     $nombre = $datos['nombre'] ?? null;
+    $empresa = $datos['empresa'] ?? null;
+    $correo = $datos['correo'] ?? null;
     $telefono = $datos['telefono'] ?? null;
+    $direccion = $datos['direccion'] ?? null;
     $cedula = $datos['cedula'] ?? null;
 
-    if (!$nombre || !$telefono) {
+    if (!$nombre && !$empresa) {
         http_response_code(400);
-        echo json_encode(['error' => 'nombre y telefono son requeridos']);
+        echo json_encode(['error' => 'nombre o empresa es requerido']);
         return;
     }
 
-    $stmt = $pdo->prepare('INSERT INTO cliente (nombre, telefono, cedula) VALUES (?, ?, ?)');
-    $stmt->execute([$nombre, $telefono, $cedula]);
+    $stmt = $pdo->prepare(
+        'INSERT INTO cliente (nombre, empresa, correo, telefono, direccion, cedula) VALUES (?, ?, ?, ?, ?, ?)'
+    );
+    $stmt->execute([$nombre, $empresa, $correo, $telefono, $direccion, $cedula]);
 
     http_response_code(201);
     echo json_encode([
         'id' => $pdo->lastInsertId(),
         'nombre' => $nombre,
+        'empresa' => $empresa,
+        'correo' => $correo,
         'telefono' => $telefono,
+        'direccion' => $direccion,
     ]);
 }
 
@@ -53,10 +61,12 @@ function listarClientes(\PDO $pdo): void
 
     if ($buscar) {
         $stmt = $pdo->prepare(
-            'SELECT * FROM cliente WHERE nombre LIKE ? OR telefono LIKE ? ORDER BY nombre'
+            'SELECT * FROM cliente
+             WHERE nombre LIKE ? OR empresa LIKE ? OR correo LIKE ? OR telefono LIKE ? OR cedula LIKE ?
+             ORDER BY COALESCE(NULLIF(nombre, \'\'), empresa)'
         );
         $like = "%{$buscar}%";
-        $stmt->execute([$like, $like]);
+        $stmt->execute([$like, $like, $like, $like, $like]);
     } else {
         $stmt = $pdo->query('SELECT * FROM cliente ORDER BY nombre');
     }

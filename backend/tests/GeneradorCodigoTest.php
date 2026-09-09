@@ -5,38 +5,42 @@ use App\GeneradorCodigo;
 
 class GeneradorCodigoTest extends TestCase
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+        GeneradorCodigo::resetSecuencia();
+    }
+
     public function testGeneraConElPrefijoCorrecto(): void
     {
         $codigo = GeneradorCodigo::generarCodigoSeguimiento();
 
-        // assertStringStartsWith: el string debe empezar exactamente asi
-        $this->assertStringStartsWith('TAL-', $codigo);
+        $this->assertStringStartsWith('OT-A-', $codigo);
     }
 
-    public function testGeneraElLargoCorrecto(): void
+    public function testGeneraUnConsecutivoConFormatoDeCuatroDigitos(): void
     {
         $codigo = GeneradorCodigo::generarCodigoSeguimiento();
+        $parteNumerica = substr($codigo, 5);
 
-        // "TAL-" (4 caracteres) + 6 caracteres = 10 en total
-        $this->assertEquals(10, strlen($codigo));
+        $this->assertMatchesRegularExpression('/^\d{4}$/', $parteNumerica);
+        $this->assertGreaterThanOrEqual(600, (int) $parteNumerica);
     }
 
-    public function testGeneraCodigosDiferentesCadaVez(): void
+    public function testGeneraConsecutivosSiguientes(): void
     {
         $codigo1 = GeneradorCodigo::generarCodigoSeguimiento();
         $codigo2 = GeneradorCodigo::generarCodigoSeguimiento();
+        $numero1 = (int) substr($codigo1, 5);
+        $numero2 = (int) substr($codigo2, 5);
 
-        // assertNotEquals: confirma que NO sean iguales
-        // (con aleatoriedad real, la probabilidad de choque es extremadamente baja)
-        $this->assertNotEquals($codigo1, $codigo2);
+        $this->assertSame($numero1 + 1, $numero2);
     }
 
-    public function testSoloContieneMayusculasYNumerosDespuesDelPrefijo(): void
+    public function testLaSecuenciaEmpiezaEn0600EnUnProcesoNuevo(): void
     {
         $codigo = GeneradorCodigo::generarCodigoSeguimiento();
-        $parteAleatoria = substr($codigo, 4); // quita "TAL-"
 
-        // assertMatchesRegularExpression: confirma que el string cumple un patron
-        $this->assertMatchesRegularExpression('/^[A-F0-9]{6}$/', $parteAleatoria);
+        $this->assertSame('OT-A-0600', $codigo);
     }
 }
