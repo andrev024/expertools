@@ -44,7 +44,7 @@ function Seguimiento({ embebido = false }) {
               <input
                 className="form-control"
                 type="text"
-                placeholder="Ej: TAL-3F6DB0"
+                placeholder="Ej: OT-A-0600"
                 value={codigo}
                 onChange={(e) => setCodigo(e.target.value)}
                 required

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { apiFetch } from '../api';
 import ClienteArticuloPicker from './ClienteArticuloPicker';
 import HistorialOrden from './HistorialOrden';
@@ -33,6 +33,23 @@ function esEstadoFinalizado(estado) {
   return /ENTREGAD|CHATARRA|CANCELAD|NO.?AUTORIZAD/.test((estado || '').toUpperCase());
 }
 
+// Color del indicador de estado: reutiliza el mismo calculo de antiguedad
+// que ya existia (dias en el estado actual) para decidir la severidad.
+function claseColorEstado(orden) {
+  if (esEstadoFinalizado(orden.estado_actual)) {
+    return /ENTREGAD/i.test(orden.estado_actual || '') ? 'estado-punto-verde' : 'estado-punto-gris';
+  }
+  const dias = antiguedadEstado(fechaEstado(orden))?.dias || 0;
+  if (dias >= 28) return 'estado-punto-rojo';
+  if (dias >= 14) return 'estado-punto-naranja';
+  if (dias >= 7) return 'estado-punto-amarillo';
+  return 'estado-punto-azul';
+}
+
+function formatearDias(dias) {
+  return !dias ? 'Hoy' : `${dias} día${dias === 1 ? '' : 's'}`;
+}
+
 function coincideFiltroAntiguedad(fecha, filtro) {
   if (filtro === 'todas') return true;
   const dias = antiguedadEstado(fecha)?.dias || 0;
@@ -51,6 +68,9 @@ function coincideTextoBusqueda(orden, texto) {
     orden.cliente_telefono,
     orden.cliente_correo,
     orden.cliente_cedula,
+    orden.articulo_tipo,
+    orden.marca,
+    orden.modelo,
   ];
   return campos.some((campo) => String(campo || '').toLowerCase().includes(buscado));
 }
@@ -75,6 +95,10 @@ function PanelRecepcion() {
   const [mensajeExito, setMensajeExito] = useState('');
   const [filtroAntiguedad, setFiltroAntiguedad] = useState('todas');
   const [busquedaTexto, setBusquedaTexto] = useState('');
+  const [filtroEstado, setFiltroEstado] = useState('todos');
+  const [filtroTipo, setFiltroTipo] = useState('todos');
+  const [filtroUbicacion, setFiltroUbicacion] = useState('todas');
+  const [ordenAntiguedad, setOrdenAntiguedad] = useState('desc');
   const [editandoUbicacion, setEditandoUbicacion] = useState(null);
   const [ubicaciones, setUbicaciones] = useState({});
 
@@ -199,6 +223,39 @@ function PanelRecepcion() {
     }
   }
 
+  const estadosDisponibles = useMemo(
+    () => Array.from(new Set(ordenes.map((o) => o.estado_actual).filter(Boolean))),
+    [ordenes]
+  );
+  const tiposDisponibles = useMemo(
+    () => Array.from(new Set(ordenes.map((o) => o.tipo).filter(Boolean))),
+    [ordenes]
+  );
+  const ubicacionesDisponibles = useMemo(
+    () => Array.from(new Set(ordenes.map((o) => o.ubicacion).filter((u) => u && u.trim()))),
+    [ordenes]
+  );
+
+  // Resumen: se calcula sobre todas las ordenes cargadas, sin filtros aplicados.
+  const totalOrdenes = ordenes.length;
+  const pendientesCount = ordenes.filter((o) => !esEstadoFinalizado(o.estado_actual)).length;
+  const retrasadasCount = ordenes.filter(
+    (o) => !esEstadoFinalizado(o.estado_actual) && (antiguedadEstado(fechaEstado(o))?.dias || 0) >= 28
+  ).length;
+  const esperandoAbonoCount = ordenes.filter((o) => o.estado_actual === 'esperando_abono').length;
+
+  const ordenesTabla = ordenes
+    .filter((orden) => coincideFiltroAntiguedad(orden.fecha_ingreso, filtroAntiguedad))
+    .filter((orden) => coincideTextoBusqueda(orden, busquedaTexto))
+    .filter((orden) => filtroEstado === 'todos' || orden.estado_actual === filtroEstado)
+    .filter((orden) => filtroTipo === 'todos' || orden.tipo === filtroTipo)
+    .filter((orden) => filtroUbicacion === 'todas' || orden.ubicacion === filtroUbicacion)
+    .sort((a, b) => {
+      const diasA = antiguedadEstado(a.fecha_ingreso)?.dias || 0;
+      const diasB = antiguedadEstado(b.fecha_ingreso)?.dias || 0;
+      return ordenAntiguedad === 'asc' ? diasA - diasB : diasB - diasA;
+    });
+
   return (
     <div className="operations-panel">
       <h2 className="h4 border-start border-4 ps-3">Crear nueva orden</h2>
@@ -318,24 +375,60 @@ function PanelRecepcion() {
         ))}
 
       <h2 className="h4 border-start border-4 ps-3">Todas las órdenes</h2>
-      <div className="d-flex align-items-center gap-2 mb-3 flex-wrap">
-        <label className="fw-semibold" htmlFor="filtro-antiguedad-recepcion">Filtrar por antigüedad</label>
-        <select id="filtro-antiguedad-recepcion" className="form-select" style={{ maxWidth: '280px' }} value={filtroAntiguedad} onChange={(e) => setFiltroAntiguedad(e.target.value)}>
-          <option value="todas">Todas las órdenes</option>
-          <option value="una_semana">1 semana o más</option>
-          <option value="dos_tres_semanas">2 a 3 semanas</option>
-          <option value="cuatro_semanas">4 semanas o más</option>
-        </select>
-        <label className="fw-semibold" htmlFor="busqueda-texto-recepcion">Buscar</label>
-        <input
-          id="busqueda-texto-recepcion"
-          className="form-control"
-          style={{ maxWidth: '280px' }}
-          type="text"
-          placeholder="Código o cliente"
-          value={busquedaTexto}
-          onChange={(e) => setBusquedaTexto(e.target.value)}
-        />
+      <div className="resumen-ordenes" aria-label="Resumen de órdenes">
+        <span className="resumen-chip"><strong>{totalOrdenes}</strong> Todas</span>
+        <span className="resumen-chip"><strong>{pendientesCount}</strong> Pendientes</span>
+        <span className="resumen-chip resumen-chip-alerta"><strong>{retrasadasCount}</strong> Retrasadas</span>
+        <span className="resumen-chip"><strong>{esperandoAbonoCount}</strong> Esperando abono</span>
+      </div>
+      <div className="filtros-bar">
+        <div className="filtro-campo">
+          <label htmlFor="filtro-antiguedad-recepcion">Antigüedad</label>
+          <select id="filtro-antiguedad-recepcion" className="form-select" value={filtroAntiguedad} onChange={(e) => setFiltroAntiguedad(e.target.value)}>
+            <option value="todas">Todas las órdenes</option>
+            <option value="una_semana">1 semana o más</option>
+            <option value="dos_tres_semanas">2 a 3 semanas</option>
+            <option value="cuatro_semanas">4 semanas o más</option>
+          </select>
+        </div>
+        <div className="filtro-campo">
+          <label htmlFor="filtro-estado-recepcion">Estado</label>
+          <select id="filtro-estado-recepcion" className="form-select" value={filtroEstado} onChange={(e) => setFiltroEstado(e.target.value)}>
+            <option value="todos">Todos los estados</option>
+            {estadosDisponibles.map((estado) => (
+              <option key={estado} value={estado}>{formatearEstado(estado)}</option>
+            ))}
+          </select>
+        </div>
+        <div className="filtro-campo">
+          <label htmlFor="filtro-tipo-recepcion">Tipo</label>
+          <select id="filtro-tipo-recepcion" className="form-select" value={filtroTipo} onChange={(e) => setFiltroTipo(e.target.value)}>
+            <option value="todos">Todos los tipos</option>
+            {tiposDisponibles.map((tipoOrden) => (
+              <option key={tipoOrden} value={tipoOrden}>{formatearTipoOrden(tipoOrden)}</option>
+            ))}
+          </select>
+        </div>
+        <div className="filtro-campo">
+          <label htmlFor="filtro-ubicacion-recepcion">Ubicación</label>
+          <select id="filtro-ubicacion-recepcion" className="form-select" value={filtroUbicacion} onChange={(e) => setFiltroUbicacion(e.target.value)}>
+            <option value="todas">Todas las ubicaciones</option>
+            {ubicacionesDisponibles.map((ubicacion) => (
+              <option key={ubicacion} value={ubicacion}>{ubicacion}</option>
+            ))}
+          </select>
+        </div>
+        <div className="filtro-campo">
+          <label htmlFor="busqueda-texto-recepcion">Buscar</label>
+          <input
+            id="busqueda-texto-recepcion"
+            className="form-control"
+            type="text"
+            placeholder="Código, cliente, teléfono o artículo"
+            value={busquedaTexto}
+            onChange={(e) => setBusquedaTexto(e.target.value)}
+          />
+        </div>
       </div>
       <div className="antiguedad-leyenda" aria-label="Leyenda de antigüedad">
         <span><i className="leyenda-color antiguedad-amarilla" /> 1 semana</span>
@@ -346,7 +439,7 @@ function PanelRecepcion() {
         <p>Cargando...</p>
       ) : (
         <div className="orders-table-wrapper">
-          <table className="orders-table table table-hover table-striped align-middle">
+          <table className="orders-table ordenes-tabla table table-hover table-striped align-middle">
             <thead>
               <tr>
                 <th className="fw-semibold">Código</th>
@@ -354,40 +447,73 @@ function PanelRecepcion() {
                 <th className="fw-semibold">Cliente</th>
                 <th className="fw-semibold">Ubicación</th>
                 <th className="fw-semibold">Estado</th>
+                <th className="fw-semibold th-ordenable">
+                  <button
+                    type="button"
+                    className="button-quiet th-sort-btn"
+                    onClick={() => setOrdenAntiguedad((actual) => (actual === 'desc' ? 'asc' : 'desc'))}
+                  >
+                    Antigüedad {ordenAntiguedad === 'desc' ? '↓' : '↑'}
+                  </button>
+                </th>
                 <th className="fw-semibold">Tipo</th>
-                <th className="fw-semibold">Detalle</th>
+                <th className="fw-semibold">Acciones</th>
               </tr>
             </thead>
             <tbody>
-              {ordenes
-                .filter((orden) => coincideFiltroAntiguedad(orden.fecha_ingreso, filtroAntiguedad))
-                .filter((orden) => coincideTextoBusqueda(orden, busquedaTexto))
-                .map((orden) => (
-                <tr key={orden.id} className={esEstadoFinalizado(orden.estado_actual) ? '' : antiguedadEstado(orden.fecha_ingreso)?.clase}>
-                  <td data-label="Código">{orden.codigo_seguimiento}</td>
-                  <td data-label="Artículo">{orden.articulo_tipo} {orden.marca}</td>
+              {ordenesTabla.map((orden) => (
+                <tr key={orden.id}>
+                  <td data-label="Código"><span className="codigo-badge">{orden.codigo_seguimiento}</span></td>
+                  <td data-label="Artículo">
+                    <div className="celda-contenido">
+                      <strong className="articulo-nombre d-block">{orden.articulo_tipo}</strong>
+                      {orden.marca && <small className="articulo-marca d-block">{orden.marca}</small>}
+                    </div>
+                  </td>
                   <td data-label="Cliente">
-                    <strong className="d-block">{orden.cliente_nombre || orden.cliente_empresa || 'Cliente sin nombre'}</strong>
-                    {orden.cliente_empresa && orden.cliente_nombre && <small className="d-block">{orden.cliente_empresa}</small>}
-                    {orden.cliente_telefono && <small className="d-block">Tel: {orden.cliente_telefono}</small>}
-                    {orden.cliente_correo && <small className="d-block">{orden.cliente_correo}</small>}
-                    {orden.cliente_cedula && <small className="d-block">CC: {orden.cliente_cedula}</small>}
+                    <div className="celda-contenido">
+                      <strong className="cliente-nombre d-block">{orden.cliente_nombre || orden.cliente_empresa || 'Cliente sin nombre'}</strong>
+                      {orden.cliente_empresa && orden.cliente_nombre && <small className="cliente-secundario d-block">{orden.cliente_empresa}</small>}
+                      {orden.cliente_telefono && <small className="cliente-secundario d-block">Tel: {orden.cliente_telefono}</small>}
+                      {orden.cliente_correo && <small className="cliente-secundario d-block">{orden.cliente_correo}</small>}
+                      {orden.cliente_cedula && <small className="cliente-secundario d-block">CC: {orden.cliente_cedula}</small>}
+                    </div>
                   </td>
                   <td data-label="Ubicación">
-                    <strong>{orden.ubicacion || 'Sin ubicación'}</strong>
-                    {editandoUbicacion === orden.id ? (
-                      <div className="mt-2">
-                        <input className="form-control" type="text" value={ubicaciones[orden.id] ?? orden.ubicacion ?? ''} onChange={(e) => setUbicaciones({ ...ubicaciones, [orden.id]: e.target.value })} />
-                        <button type="button" className="button button-primary btn btn-primary btn-sm mt-2 me-1" onClick={() => guardarUbicacion(orden.id)}>Guardar</button>
-                        <button type="button" className="button button-secondary btn btn-outline-secondary btn-sm mt-2" onClick={() => setEditandoUbicacion(null)}>Cancelar</button>
-                      </div>
-                    ) : (
-                      <button type="button" className="button button-quiet d-block" onClick={() => { setUbicaciones({ ...ubicaciones, [orden.id]: orden.ubicacion || '' }); setEditandoUbicacion(orden.id); }}>Cambiar</button>
-                    )}
+                    <div className="celda-contenido">
+                      <span className={`ubicacion-chip d-block${orden.ubicacion ? '' : ' ubicacion-vacia'}`}>
+                        <span aria-hidden="true">📍</span> {orden.ubicacion || 'Sin ubicación'}
+                      </span>
+                      {editandoUbicacion === orden.id ? (
+                        <div className="mt-2">
+                          <input className="form-control" type="text" value={ubicaciones[orden.id] ?? orden.ubicacion ?? ''} onChange={(e) => setUbicaciones({ ...ubicaciones, [orden.id]: e.target.value })} />
+                          <button type="button" className="button button-primary btn btn-primary btn-sm mt-2 me-1" onClick={() => guardarUbicacion(orden.id)}>Guardar</button>
+                          <button type="button" className="button button-secondary btn btn-outline-secondary btn-sm mt-2" onClick={() => setEditandoUbicacion(null)}>Cancelar</button>
+                        </div>
+                      ) : (
+                        <button type="button" className="button-quiet link-button" onClick={() => { setUbicaciones({ ...ubicaciones, [orden.id]: orden.ubicacion || '' }); setEditandoUbicacion(orden.id); }}>Cambiar</button>
+                      )}
+                    </div>
                   </td>
-                  <td data-label="Estado"><span className="status-badge">{formatearEstado(orden.estado_actual)}</span><small className="d-block mt-1">Desde {mostrarFecha(fechaEstado(orden))}</small>{!esEstadoFinalizado(orden.estado_actual) && <small className="d-block">Ingresada hace {antiguedadEstado(orden.fecha_ingreso)?.dias || 0} días</small>}{!esEstadoFinalizado(orden.estado_actual) && antiguedadEstado(fechaEstado(orden))?.horas >= 24 && <small className="d-block">{antiguedadEstado(fechaEstado(orden)).horas} h pendiente en este estado</small>}</td>
+                  <td data-label="Estado">
+                    <div className="celda-contenido">
+                      <span className="estado-chip">
+                        <i className={`estado-punto ${claseColorEstado(orden)}`} aria-hidden="true" />
+                        <span className="estado-nombre">{formatearEstado(orden.estado_actual)}</span>
+                      </span>
+                      {!esEstadoFinalizado(orden.estado_actual) && (
+                        <small className="estado-tiempo d-block mt-1">{formatearDias(antiguedadEstado(fechaEstado(orden))?.dias)} en este estado</small>
+                      )}
+                      <small className="estado-fecha d-block">Desde {mostrarFecha(fechaEstado(orden))}</small>
+                    </div>
+                  </td>
+                  <td data-label="Antigüedad">
+                    <span className={`antiguedad-valor ${antiguedadEstado(orden.fecha_ingreso)?.clase || ''}`}>
+                      {formatearDias(antiguedadEstado(orden.fecha_ingreso)?.dias)}
+                    </span>
+                  </td>
                   <td data-label="Tipo">{formatearTipoOrden(orden.tipo)}</td>
-                  <td data-label="Historial"><HistorialOrden ordenId={orden.id} /></td>
+                  <td data-label="Acciones"><HistorialOrden ordenId={orden.id} compacto /></td>
                 </tr>
               ))}
             </tbody>

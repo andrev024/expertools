@@ -230,10 +230,14 @@
 .order-card h3 { margin: 0 0 8px; color: var(--accent-dark); }
 .order-card input, .order-card textarea { margin-top: 10px; }
 .orders-table-wrapper { width: 100%; max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; border: 1px solid var(--border); border-radius: 10px; }
-.orders-table { width: 100%; min-width: 620px; border-collapse: collapse; overflow: hidden; background: var(--surface); border: 0; border-radius: 10px; font-size: 14px; }
+.orders-table { width: 100%; min-width: 620px; border-collapse: collapse; background: var(--surface); border: 0; border-radius: 10px; font-size: 14px; }
 .orders-table th { background: var(--ink-soft); color: var(--text-h); text-align: left; font-size: 11px; letter-spacing: 1px; text-transform: uppercase; }
 .orders-table th, .orders-table td { padding: 14px 13px; border-bottom: 1px solid var(--border); }
 .orders-table tr:last-child td { border-bottom: 0; }
+.orders-table thead tr:first-child th:first-child { border-top-left-radius: 10px; }
+.orders-table thead tr:first-child th:last-child { border-top-right-radius: 10px; }
+.orders-table tbody tr:last-child td:first-child { border-bottom-left-radius: 10px; }
+.orders-table tbody tr:last-child td:last-child { border-bottom-right-radius: 10px; }
 @media (max-width: 760px) {
   .orders-table-wrapper { margin-inline: 0; }
   .orders-table { white-space: nowrap; }
