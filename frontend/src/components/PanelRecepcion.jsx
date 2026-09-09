@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { apiFetch } from '../api';
 import ClienteArticuloPicker from './ClienteArticuloPicker';
 import HistorialOrden from './HistorialOrden';
-import { formatearEstado, formatearTipoOrden } from '../utils/textoUI';
+import { formatearEstado, formatearTipoOrden, normalizarEstado } from '../utils/textoUI';
 
 function antiguedadEstado(fecha) {
   if (!fecha) return null;
@@ -223,10 +223,10 @@ function PanelRecepcion() {
     }
   }
 
-  const estadosDisponibles = useMemo(
-    () => Array.from(new Set(ordenes.map((o) => o.estado_actual).filter(Boolean))),
-    [ordenes]
-  );
+  const estadosDisponibles = useMemo(() => {
+    const claves = new Set(ordenes.map((o) => normalizarEstado(o.estado_actual)));
+    return Array.from(claves).sort((a, b) => formatearEstado(a).localeCompare(formatearEstado(b)));
+  }, [ordenes]);
   const tiposDisponibles = useMemo(
     () => Array.from(new Set(ordenes.map((o) => o.tipo).filter(Boolean))),
     [ordenes]
@@ -247,7 +247,7 @@ function PanelRecepcion() {
   const ordenesTabla = ordenes
     .filter((orden) => coincideFiltroAntiguedad(orden.fecha_ingreso, filtroAntiguedad))
     .filter((orden) => coincideTextoBusqueda(orden, busquedaTexto))
-    .filter((orden) => filtroEstado === 'todos' || orden.estado_actual === filtroEstado)
+    .filter((orden) => filtroEstado === 'todos' || normalizarEstado(orden.estado_actual) === filtroEstado)
     .filter((orden) => filtroTipo === 'todos' || orden.tipo === filtroTipo)
     .filter((orden) => filtroUbicacion === 'todas' || orden.ubicacion === filtroUbicacion)
     .sort((a, b) => {
