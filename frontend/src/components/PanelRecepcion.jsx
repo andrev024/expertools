@@ -27,12 +27,32 @@ function fechaEstado(orden) {
   return orden.estado_desde || orden.fecha_ingreso;
 }
 
+// Cubre estados finales y variantes historicas migradas en mayusculas
+// (ENTREGADA, ENTREGADO Y PAGADO, CHATARRA, NO AUTORIZADO, etc.)
+function esEstadoFinalizado(estado) {
+  return /ENTREGAD|CHATARRA|CANCELAD|NO.?AUTORIZAD/.test((estado || '').toUpperCase());
+}
+
 function coincideFiltroAntiguedad(fecha, filtro) {
   if (filtro === 'todas') return true;
   const dias = antiguedadEstado(fecha)?.dias || 0;
   if (filtro === 'una_semana') return dias >= 7;
   if (filtro === 'dos_tres_semanas') return dias >= 14 && dias < 28;
   return dias >= 28;
+}
+
+function coincideTextoBusqueda(orden, texto) {
+  const buscado = texto.trim().toLowerCase();
+  if (!buscado) return true;
+  const campos = [
+    orden.codigo_seguimiento,
+    orden.cliente_nombre,
+    orden.cliente_empresa,
+    orden.cliente_telefono,
+    orden.cliente_correo,
+    orden.cliente_cedula,
+  ];
+  return campos.some((campo) => String(campo || '').toLowerCase().includes(buscado));
 }
 
 // En v2, recepcion ya NO cotiza -- solo recibe y hace la entrega final.
@@ -54,6 +74,7 @@ function PanelRecepcion() {
   const [ubicacionInicial, setUbicacionInicial] = useState('');
   const [mensajeExito, setMensajeExito] = useState('');
   const [filtroAntiguedad, setFiltroAntiguedad] = useState('todas');
+  const [busquedaTexto, setBusquedaTexto] = useState('');
   const [editandoUbicacion, setEditandoUbicacion] = useState(null);
   const [ubicaciones, setUbicaciones] = useState({});
 
@@ -297,7 +318,7 @@ function PanelRecepcion() {
         ))}
 
       <h2 className="h4 border-start border-4 ps-3">Todas las órdenes</h2>
-      <div className="d-flex align-items-center gap-2 mb-3">
+      <div className="d-flex align-items-center gap-2 mb-3 flex-wrap">
         <label className="fw-semibold" htmlFor="filtro-antiguedad-recepcion">Filtrar por antigüedad</label>
         <select id="filtro-antiguedad-recepcion" className="form-select" style={{ maxWidth: '280px' }} value={filtroAntiguedad} onChange={(e) => setFiltroAntiguedad(e.target.value)}>
           <option value="todas">Todas las órdenes</option>
@@ -305,6 +326,16 @@ function PanelRecepcion() {
           <option value="dos_tres_semanas">2 a 3 semanas</option>
           <option value="cuatro_semanas">4 semanas o más</option>
         </select>
+        <label className="fw-semibold" htmlFor="busqueda-texto-recepcion">Buscar</label>
+        <input
+          id="busqueda-texto-recepcion"
+          className="form-control"
+          style={{ maxWidth: '280px' }}
+          type="text"
+          placeholder="Código o cliente"
+          value={busquedaTexto}
+          onChange={(e) => setBusquedaTexto(e.target.value)}
+        />
       </div>
       <div className="antiguedad-leyenda" aria-label="Leyenda de antigüedad">
         <span><i className="leyenda-color antiguedad-amarilla" /> 1 semana</span>
@@ -328,11 +359,20 @@ function PanelRecepcion() {
               </tr>
             </thead>
             <tbody>
-              {ordenes.filter((orden) => coincideFiltroAntiguedad(orden.fecha_ingreso, filtroAntiguedad)).map((orden) => (
-                <tr key={orden.id} className={antiguedadEstado(orden.fecha_ingreso)?.clase}>
+              {ordenes
+                .filter((orden) => coincideFiltroAntiguedad(orden.fecha_ingreso, filtroAntiguedad))
+                .filter((orden) => coincideTextoBusqueda(orden, busquedaTexto))
+                .map((orden) => (
+                <tr key={orden.id} className={esEstadoFinalizado(orden.estado_actual) ? '' : antiguedadEstado(orden.fecha_ingreso)?.clase}>
                   <td data-label="Código">{orden.codigo_seguimiento}</td>
                   <td data-label="Artículo">{orden.articulo_tipo} {orden.marca}</td>
-                  <td data-label="Cliente">{orden.cliente_nombre || orden.cliente_empresa || 'Cliente sin nombre'}</td>
+                  <td data-label="Cliente">
+                    <strong className="d-block">{orden.cliente_nombre || orden.cliente_empresa || 'Cliente sin nombre'}</strong>
+                    {orden.cliente_empresa && orden.cliente_nombre && <small className="d-block">{orden.cliente_empresa}</small>}
+                    {orden.cliente_telefono && <small className="d-block">Tel: {orden.cliente_telefono}</small>}
+                    {orden.cliente_correo && <small className="d-block">{orden.cliente_correo}</small>}
+                    {orden.cliente_cedula && <small className="d-block">CC: {orden.cliente_cedula}</small>}
+                  </td>
                   <td data-label="Ubicación">
                     <strong>{orden.ubicacion || 'Sin ubicación'}</strong>
                     {editandoUbicacion === orden.id ? (
@@ -345,7 +385,7 @@ function PanelRecepcion() {
                       <button type="button" className="button button-quiet d-block" onClick={() => { setUbicaciones({ ...ubicaciones, [orden.id]: orden.ubicacion || '' }); setEditandoUbicacion(orden.id); }}>Cambiar</button>
                     )}
                   </td>
-                  <td data-label="Estado"><span className="status-badge">{formatearEstado(orden.estado_actual)}</span><small className="d-block mt-1">Desde {mostrarFecha(fechaEstado(orden))}</small><small className="d-block">Ingresada hace {antiguedadEstado(orden.fecha_ingreso)?.dias || 0} días</small>{antiguedadEstado(fechaEstado(orden))?.horas >= 24 && <small className="d-block">{antiguedadEstado(fechaEstado(orden)).horas} h pendiente en este estado</small>}</td>
+                  <td data-label="Estado"><span className="status-badge">{formatearEstado(orden.estado_actual)}</span><small className="d-block mt-1">Desde {mostrarFecha(fechaEstado(orden))}</small>{!esEstadoFinalizado(orden.estado_actual) && <small className="d-block">Ingresada hace {antiguedadEstado(orden.fecha_ingreso)?.dias || 0} días</small>}{!esEstadoFinalizado(orden.estado_actual) && antiguedadEstado(fechaEstado(orden))?.horas >= 24 && <small className="d-block">{antiguedadEstado(fechaEstado(orden)).horas} h pendiente en este estado</small>}</td>
                   <td data-label="Tipo">{formatearTipoOrden(orden.tipo)}</td>
                   <td data-label="Historial"><HistorialOrden ordenId={orden.id} /></td>
                 </tr>

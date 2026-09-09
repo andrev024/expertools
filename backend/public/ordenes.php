@@ -105,7 +105,8 @@ function listarOrdenes(\PDO $pdo): void
                               FROM historial_estado h
                               WHERE h.orden_id = os.id AND h.comentario LIKE '%Ubicacion:%'
                               ORDER BY h.fecha DESC LIMIT 1), '') AS ubicacion,
-                    c.nombre AS cliente_nombre, c.telefono AS cliente_telefono
+                    c.nombre AS cliente_nombre, c.empresa AS cliente_empresa, c.telefono AS cliente_telefono,
+                    c.correo AS cliente_correo, c.cedula AS cliente_cedula
              FROM orden_servicio os
              JOIN articulo a ON a.id = os.articulo_id
              JOIN cliente c ON c.id = a.cliente_id
