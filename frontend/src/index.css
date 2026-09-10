@@ -252,10 +252,10 @@ button:not(.button-quiet):hover, .button-primary:hover { background: var(--accen
 /* table-layout fijo: evita que la columna sticky "Codigo" empuje/tape a
    "Articulo" al hacer scroll horizontal (bug de position:sticky con layout auto). */
 .ordenes-tabla { table-layout: fixed; min-width: 1180px; }
-.ordenes-tabla th:nth-child(1), .ordenes-tabla td:nth-child(1) { width: 120px; }
-.ordenes-tabla th:nth-child(2), .ordenes-tabla td:nth-child(2) { width: 170px; }
-.ordenes-tabla th:nth-child(3), .ordenes-tabla td:nth-child(3) { width: 200px; }
-.ordenes-tabla th:nth-child(4), .ordenes-tabla td:nth-child(4) { width: 150px; }
+.ordenes-tabla th:nth-child(1), .ordenes-tabla td:nth-child(1) { width: 85px; }
+.ordenes-tabla th:nth-child(2), .ordenes-tabla td:nth-child(2) { width: 135px; }
+.ordenes-tabla th:nth-child(3), .ordenes-tabla td:nth-child(3) { width: 190px; }
+.ordenes-tabla th:nth-child(4), .ordenes-tabla td:nth-child(4) { width: 140px; }
 .ordenes-tabla th:nth-child(5), .ordenes-tabla td:nth-child(5) { width: 190px; }
 .ordenes-tabla th:nth-child(6), .ordenes-tabla td:nth-child(6) { width: 120px; }
 .ordenes-tabla th:nth-child(7), .ordenes-tabla td:nth-child(7) { width: 110px; }
