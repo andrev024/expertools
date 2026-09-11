@@ -5,13 +5,7 @@ Sistema web para gestionar el ciclo completo de mantenimiento y garantía de art
 **Demo en vivo:** https://expertools.vercel.app
 (el backend gratuito puede tardar 30-50 segundos en "despertar" en la primera petición tras un rato de inactividad)
 
-**Usuarios de prueba:**
-| Rol | Email | Contraseña |
-|---|---|---|
-| Recepción | admin@test.com | 123456 |
-| Técnico | tecnico@test.com | 123456 |
 
----
 
 ## Tabla de contenidos
 
