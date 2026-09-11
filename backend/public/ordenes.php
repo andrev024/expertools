@@ -100,7 +100,7 @@ function listarOrdenes(\PDO $pdo): void
                 "SELECT os.id, os.codigo_seguimiento, os.tipo, os.estado_actual, os.fecha_ingreso,
                     COALESCE((SELECT MAX(h.fecha) FROM historial_estado h WHERE h.orden_id = os.id), os.fecha_ingreso) AS estado_desde,
                     a.tipo AS articulo_tipo, a.marca, a.modelo,
-                    COALESCE((SELECT GROUP_CONCAT(ac.nombre SEPARATOR ', ') FROM accesorio ac WHERE ac.articulo_id = a.id), '') AS accesorios,
+                    COALESCE((SELECT JSON_ARRAYAGG(JSON_OBJECT('nombre', ac.nombre, 'descripcion', ac.descripcion)) FROM accesorio ac WHERE ac.articulo_id = a.id), JSON_ARRAY()) AS accesorios,
                     COALESCE(os.ubicacion_actual, (SELECT SUBSTRING_INDEX(h.comentario, 'Ubicacion: ', -1)
                               FROM historial_estado h
                               WHERE h.orden_id = os.id AND h.comentario LIKE '%Ubicacion:%'
@@ -113,7 +113,12 @@ function listarOrdenes(\PDO $pdo): void
              ORDER BY os.fecha_ingreso ASC"
         );
 
-        echo json_encode($stmt->fetchAll());
+        $ordenes = $stmt->fetchAll();
+        foreach ($ordenes as &$orden) {
+            $orden['accesorios'] = json_decode($orden['accesorios'] ?: '[]', true) ?: [];
+        }
+        unset($orden);
+        echo json_encode($ordenes);
     } catch (\Exception $e) {
         error_log('Error al listar ordenes: ' . $e->getMessage());
         http_response_code(500);

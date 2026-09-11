@@ -43,8 +43,7 @@ function Seguimiento({ embebido = false }) {
     <div className={embebido ? 'tracking-embedded' : 'tracking-page min-vh-100 bg-light'}>
       {!embebido && (
         <header className="public-header container-fluid border-bottom bg-white">
-          <Link to="/login" className="brand d-flex align-items-center text-decoration-none"><img className="brand-logo" src="/logo-expertools.png" alt="Expertools" /></Link>
-          <Link to="/login" className="text-link fw-semibold">Acceso interno →</Link>
+          <a href="https://expertools.com.co" className="brand d-flex align-items-center text-decoration-none"><img className="brand-logo" src="/logo-expertools.png" alt="Expertools" /></a>
         </header>
       )}
       <main className={embebido ? 'tracking-main tracking-main-embedded container-fluid p-0' : 'tracking-main container py-5'}>

@@ -26,6 +26,15 @@ function parsearFechaBogota(fecha) {
   return new Date(`${fecha.replace(' ', 'T')}-05:00`);
 }
 
+function formatearAccesorios(accesorios) {
+  if (Array.isArray(accesorios)) {
+    return accesorios
+      .map((accesorio) => `- ${accesorio.nombre}${accesorio.descripcion ? `: ${accesorio.descripcion}` : ''}`)
+      .join('\n');
+  }
+  return accesorios || '';
+}
+
 function fechaEstado(orden) {
   return orden.estado_desde || orden.fecha_ingreso;
 }
@@ -130,7 +139,7 @@ function PanelRecepcion() {
       `-  Código de seguimiento: ${orden.codigo_seguimiento}`,
       `- Artículo: ${orden.articulo_tipo}${orden.marca ? ` ${orden.marca}` : ''}${orden.modelo ? ` ${orden.modelo}` : ''}`,
       '',
-      ' Por favor, acércate a Expertools para recoger tu equipo.',
+      'Gracias por confiar en ExperTools. Por favor, acércate a nuestras instalaciones para recoger tu equipo.',
       '',
       ` Consulta el seguimiento de tu orden aquí: ${enlaceSeguimiento(orden.codigo_seguimiento)}`,
       '',
@@ -141,9 +150,8 @@ function PanelRecepcion() {
     abrirWhatsapp(window.open('', '_blank'), orden.cliente_telefono, mensaje);
   }
 
-  // Al crear la orden, el cliente recibe de inmediato un WhatsApp con toda
-  // la información de recepción (código, artículo, accesorios, ubicación)
-  // y el link para hacerle seguimiento por su cuenta.
+  // Al crear la orden, el cliente recibe de inmediato un WhatsApp con la
+  // información de recepción y el link para hacerle seguimiento.
   function abrirAvisoCreacion(orden, ventanaWhatsapp) {
     const mensaje = [
       ` Hola ${orden.cliente_nombre || orden.cliente_empresa || 'cliente'}, te contactamos desde Expertools.`,
@@ -152,8 +160,7 @@ function PanelRecepcion() {
       `- Código de seguimiento: ${orden.codigo_seguimiento}`,
       `- Tipo de servicio: ${formatearTipoOrden(orden.tipo)}`,
       `- Artículo: ${orden.articulo_tipo}${orden.marca ? ` ${orden.marca}` : ''}${orden.modelo ? ` ${orden.modelo}` : ''}`,
-      orden.accesorios ? `- Accesorios recibidos: ${orden.accesorios}` : '',
-      orden.ubicacion ? `- Ubicación: ${orden.ubicacion}` : '',
+      orden.accesorios?.length ? `- Accesorios recibidos:\n${formatearAccesorios(orden.accesorios)}` : '',
       '',
       ' Te avisaremos por este medio cuando tengamos el diagnóstico y la cotización.',
       '',

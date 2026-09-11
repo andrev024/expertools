@@ -2,6 +2,27 @@ import { useState } from 'react';
 import { apiFetch } from '../api';
 import { CATALOGO_ARTICULOS, TIPOS_DISPONIBLES } from '../catalogoArticulos';
 
+function normalizarTexto(valor) {
+  return String(valor || '').trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+function clientesUnicos(clientes) {
+  const vistos = new Set();
+  return clientes.filter((cliente) => {
+    const identidad = [
+      normalizarTexto(cliente.nombre),
+      normalizarTexto(cliente.empresa),
+      normalizarTexto(cliente.correo),
+      normalizarTexto(cliente.telefono),
+      normalizarTexto(cliente.cedula),
+    ].join('|');
+    const clave = identidad.replace(/^\|+$/, '') || `id:${cliente.id}`;
+    if (vistos.has(clave)) return false;
+    vistos.add(clave);
+    return true;
+  });
+}
+
 function ClienteArticuloPicker({ onArticuloSeleccionado }) {
   const [busqueda, setBusqueda] = useState('');
   const [clientes, setClientes] = useState([]);
@@ -53,7 +74,7 @@ function ClienteArticuloPicker({ onArticuloSeleccionado }) {
     setError('');
     try {
       const datos = await apiFetch(`clientes.php?buscar=${encodeURIComponent(busqueda)}`);
-      setClientes(datos);
+      setClientes(clientesUnicos(datos));
     } catch (err) {
       setError(err.message);
     }
@@ -285,7 +306,7 @@ function ClienteArticuloPicker({ onArticuloSeleccionado }) {
             </div>
           ))}
           <button type="button" onClick={() => setAccesorios([...accesorios, { nombre: '', descripcion: '' }])}>Agregar accesorio</button>
-
+          <div style={{ marginTop: '12px' }}> </div>
           <button type="button" onClick={crearClienteYArticulo}>
             {clienteSeleccionado ? 'Crear artículo' : 'Crear cliente y artículo'}
           </button>
