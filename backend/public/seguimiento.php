@@ -51,6 +51,35 @@ $stmtHistorial = $pdo->prepare(
 $stmtHistorial->execute([$orden['id']]);
 $historial = $stmtHistorial->fetchAll();
 
+// Diagnóstico y cotización más reciente de la orden, para que el cliente
+// vea el detalle (dictamen, repuestos con su precio y el total) en su
+// línea de tiempo, no solo el nombre del estado.
+$stmtCotizacion = $pdo->prepare(
+    'SELECT dictamen, repuestos, monto, subtotal, abono, estado, fecha_respuesta
+     FROM cotizacion WHERE orden_id = ? ORDER BY id DESC LIMIT 1'
+);
+$stmtCotizacion->execute([$orden['id']]);
+$cotizacion = $stmtCotizacion->fetch();
+$cotizacionPublica = null;
+if ($cotizacion) {
+    $repuestos = json_decode($cotizacion['repuestos'] ?: '[]', true) ?: [];
+    $cotizacionPublica = [
+        'diagnostico' => $cotizacion['dictamen'],
+        'repuestos' => array_map(
+            static fn($r) => [
+                'nombre' => $r['referencia'] ?? '',
+                'cantidad' => $r['cantidad'] ?? 0,
+                'precio_unitario' => $r['montoUnitario'] ?? 0,
+                'precio_total' => $r['total'] ?? ((float) ($r['cantidad'] ?? 0) * (float) ($r['montoUnitario'] ?? 0)),
+            ],
+            $repuestos
+        ),
+        'total' => $cotizacion['monto'],
+        'abono' => $cotizacion['abono'],
+        'estado' => $cotizacion['estado'],
+    ];
+}
+
 // Traducimos cada paso del historial a su version publica,
 // y quitamos duplicados consecutivos (ej. dos pasos internos
 // que se ven igual para el cliente no deben repetirse en la linea de tiempo).
@@ -77,4 +106,5 @@ echo json_encode([
         ? 'En diagnóstico'
         : ($mapaEstadosPublicos[$orden['estado_actual']] ?? $orden['estado_actual']),
     'linea_tiempo' => $lineaTiempoPublica,
+    'cotizacion' => $cotizacionPublica,
 ]);

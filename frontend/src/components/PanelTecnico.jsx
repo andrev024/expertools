@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react';
 import { apiFetch } from '../api';
 import { formatearEstado } from '../utils/textoUI';
 import HistorialOrden from './HistorialOrden';
-
-const IVA_COLOMBIA = 0.19;
+import EditorRepuestos from './EditorRepuestos';
+import CambioEstadoAdmin from './CambioEstadoAdmin';
+import { abrirWhatsapp, enlaceSeguimiento } from '../utils/whatsapp';
 
 // Transiciones simples (via cambiar_estado.php) que no requieren formulario extra
 const TRANSICIONES_SIMPLES = {
@@ -61,6 +62,13 @@ const ESTADOS_ACCIONABLES = [
   'en_reparacion',
   'esperando_repuesto',
   'finalizado_tecnico',
+];
+
+// Estados desde los que ya existe una cotización registrada y por lo tanto
+// se pueden editar sus repuestos (agregar uno nuevo, corregir cantidades, etc.)
+const ESTADOS_CON_COTIZACION = [
+  'cotizado', 'esperando_respuesta', 'esperando_abono', 'esperando_tecnico',
+  'en_reparacion', 'esperando_repuesto', 'finalizado_tecnico', 'en_revision_recepcion', 'listo_para_entregar',
 ];
 
 function PanelTecnico() {
@@ -183,9 +191,7 @@ function PanelTecnico() {
       (total, repuesto) => total + (Number(repuesto.cantidad) * Number(repuesto.montoUnitario)),
       0,
     );
-    const iva = Math.round(montoTotal * IVA_COLOMBIA * 100) / 100;
-    const totalConIva = montoTotal + iva;
-    if (Number(form.abono || 0) > totalConIva) {
+    if (Number(form.abono || 0) > montoTotal) {
       setError('El abono no puede ser mayor que el total cotizado');
       return;
     }
@@ -198,12 +204,11 @@ function PanelTecnico() {
           orden_id: ordenId,
           repuestos: JSON.stringify(repuestos),
           dictamen: form.dictamen,
-          monto: totalConIva,
+          monto: montoTotal,
           abono: Number(form.abono || 0),
         }),
       });
-      const telefono = String(orden?.cliente_telefono || '').replace(/\D/g, '');
-      const telefonoWhatsapp = telefono.length === 10 && telefono.startsWith('3') ? `57${telefono}` : telefono;
+      const enlace = enlaceSeguimiento(orden?.codigo_seguimiento);
       const mensaje = [
         ` Hola ${orden?.cliente_nombre || 'cliente'}, te contactamos desde Expertools.`,
         '** Cotización de servicio: **',
@@ -211,23 +216,21 @@ function PanelTecnico() {
         ` Código: ${orden?.codigo_seguimiento || ordenId}`,
         ` Artículo: ${orden?.articulo_tipo || ''}${orden?.marca ? ` ${orden.marca}` : ''}${orden?.modelo ? ` ${orden.modelo}` : ''}`,
         ` Diagnóstico: ${form.dictamen}`,
-        ` Repuestos: ${form.repuestos?.filter((repuesto) => repuesto.referencia.trim()).map((repuesto) => `${repuesto.referencia} (x${repuesto.cantidad})${repuesto.descripcion ? `: ${repuesto.descripcion}` : ''}`).join(', ') || 'No requiere repuestos'}`,
-        ` Subtotal: $${montoTotal.toLocaleString('es-CO')}`,
-        ` IVA (19%): $${iva.toLocaleString('es-CO')}`,
-        ` Total: $${totalConIva.toLocaleString('es-CO')}`,
+        ' Repuestos:',
+        ...(repuestos.length
+          ? repuestos.map((repuesto) => `  - ${repuesto.referencia} (x${repuesto.cantidad})${repuesto.descripcion ? ` - ${repuesto.descripcion}` : ''}: $${(Number(repuesto.cantidad) * Number(repuesto.montoUnitario)).toLocaleString('es-CO')}`)
+          : ['  - No requiere repuestos']),
+        ` Total: $${montoTotal.toLocaleString('es-CO')}`,
         Number(form.abono || 0) > 0 ? `⚠️ Abono requerido: $${Number(form.abono).toLocaleString('es-CO')}` : '',
         '',
         ' Por favor confírmanos por este medio si autorizas la reparación, recuerda que la reparacion no inicia si no se recibe el abono en caso de que lo requiera. ',
         '',
+        ` Sigue tu orden en tiempo real aquí: ${enlace}`,
+        '',
         'Instagram: https://www.instagram.com/expertools_herramientas',
         'Ubicación: https://www.google.com/maps/search/?api=1&query=ExperTools%20Reparaci%C3%B3n%20Mantenimiento%20y%20Venta%20de%20Herramientas%2C%20Bogot%C3%A1',
       ].join('\n');
-      const urlWhatsapp = `https://wa.me/${telefonoWhatsapp}?text=${encodeURIComponent(mensaje)}`;
-      if (ventanaWhatsapp) {
-        ventanaWhatsapp.location.href = urlWhatsapp;
-      } else {
-        window.location.href = urlWhatsapp;
-      }
+      abrirWhatsapp(ventanaWhatsapp, orden?.cliente_telefono, mensaje);
       cargarOrdenes();
     } catch (err) {
       if (ventanaWhatsapp) ventanaWhatsapp.close();
@@ -372,23 +375,11 @@ function PanelTecnico() {
                   </div>
                 ))}
                 <p className="fw-semibold">
-                  Subtotal: ${(obtenerRepuestos(orden.id)
+                  Total: ${(obtenerRepuestos(orden.id)
                     .filter((repuesto) => repuesto.referencia.trim())
                     .reduce((total, repuesto) => total + (Number(repuesto.cantidad || 0) * Number(repuesto.montoUnitario || 0)), 0))
                     .toLocaleString('es-CO')}
                 </p>
-                {(() => {
-                  const subtotal = obtenerRepuestos(orden.id)
-                    .filter((repuesto) => repuesto.referencia.trim())
-                    .reduce((total, repuesto) => total + (Number(repuesto.cantidad || 0) * Number(repuesto.montoUnitario || 0)), 0);
-                  const iva = Math.round(subtotal * IVA_COLOMBIA * 100) / 100;
-                  return (
-                    <p className="mb-2">
-                      IVA (19%): ${iva.toLocaleString('es-CO')}<br />
-                      <strong>Total con IVA: ${(subtotal + iva).toLocaleString('es-CO')}</strong>
-                    </p>
-                  );
-                })()}
                 <input
                   className="form-control mb-2"
                   type="number"
@@ -430,6 +421,10 @@ function PanelTecnico() {
               ))}
             </div>
           )}
+          {ESTADOS_CON_COTIZACION.includes(orden.estado_actual) && (
+            <EditorRepuestos ordenId={orden.id} onGuardado={cargarOrdenes} />
+          )}
+          <CambioEstadoAdmin ordenId={orden.id} estadoActual={orden.estado_actual} onCambiado={cargarOrdenes} />
           <HistorialOrden ordenId={orden.id} />
         </div>
       ))}

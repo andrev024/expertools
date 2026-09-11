@@ -1,28 +1,42 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useState, useEffect, useCallback } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { apiFetch } from '../api';
 import { formatearEstado } from '../utils/textoUI';
 
 function Seguimiento({ embebido = false }) {
-  const [codigo, setCodigo] = useState('');
+  const [searchParams] = useSearchParams();
+  const [codigo, setCodigo] = useState(searchParams.get('codigo') || '');
   const [resultado, setResultado] = useState(null);
   const [error, setError] = useState('');
   const [cargando, setCargando] = useState(false);
 
-  async function buscarOrden(e) {
-    e.preventDefault();
+  const buscarPorCodigo = useCallback(async (codigoBuscado) => {
     setError('');
     setResultado(null);
     setCargando(true);
-
     try {
-      const datos = await apiFetch(`seguimiento.php?codigo=${encodeURIComponent(codigo)}`);
+      const datos = await apiFetch(`seguimiento.php?codigo=${encodeURIComponent(codigoBuscado)}`);
       setResultado(datos);
     } catch (err) {
       setError(err.message);
     } finally {
       setCargando(false);
     }
+  }, []);
+
+  // Si el link (por ejemplo, el que llega por WhatsApp) trae ?codigo=..., buscamos automáticamente.
+  useEffect(() => {
+    const codigoUrl = searchParams.get('codigo');
+    if (codigoUrl) {
+      const temporizador = setTimeout(() => buscarPorCodigo(codigoUrl), 0);
+      return () => clearTimeout(temporizador);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function buscarOrden(e) {
+    e.preventDefault();
+    buscarPorCodigo(codigo);
   }
 
   return (
@@ -80,6 +94,29 @@ function Seguimiento({ embebido = false }) {
                       </li>
                     ))}
                   </ul>
+
+                  {resultado.cotizacion && (
+                    <div className="public-quote mt-4">
+                      <h3 className="h6 text-uppercase text-secondary fw-semibold mb-3">Diagnóstico y cotización</h3>
+                      {resultado.cotizacion.diagnostico && (
+                        <p className="mb-2"><strong>Diagnóstico:</strong> {resultado.cotizacion.diagnostico}</p>
+                      )}
+                      {resultado.cotizacion.repuestos?.length > 0 && (
+                        <ul className="list-group list-group-flush mb-2">
+                          {resultado.cotizacion.repuestos.map((repuesto, index) => (
+                            <li key={`repuesto-${index}`} className="list-group-item px-0 py-2 d-flex justify-content-between align-items-center gap-3">
+                              <span>{repuesto.nombre} {repuesto.cantidad > 1 ? `(x${repuesto.cantidad})` : ''}</span>
+                              <strong>${Number(repuesto.precio_total).toLocaleString('es-CO')}</strong>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                      <p className="mb-1"><strong>Total: ${Number(resultado.cotizacion.total || 0).toLocaleString('es-CO')}</strong></p>
+                      {Number(resultado.cotizacion.abono) > 0 && (
+                        <p className="mb-0 text-secondary">Abono requerido: ${Number(resultado.cotizacion.abono).toLocaleString('es-CO')}</p>
+                      )}
+                    </div>
+                  )}
                   {resultado.comentarios?.length > 0 && (
                     <div className="public-comments">
                       <h3 className="h6 text-uppercase text-secondary fw-semibold mb-3">Comentarios del servicio</h3>

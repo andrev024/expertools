@@ -39,8 +39,13 @@ class MaquinaEstados
     ];
 
     // ¿Se puede pasar de $estadoActual a $nuevoEstado?
-    public static function esTransicionValida(string $estadoActual, string $nuevoEstado): bool
+    // El admin puede saltar a cualquier estado valido (para corregir errores
+    // operativos), sin quedar atado a la secuencia normal del flujo.
+    public static function esTransicionValida(string $estadoActual, string $nuevoEstado, string $rol = ''): bool
     {
+        if ($rol === 'admin') {
+            return array_key_exists($nuevoEstado, self::$rolesPorEstado) || in_array($nuevoEstado, ['recibido']);
+        }
         $permitidos = self::$transiciones[$estadoActual] ?? [];
         return in_array($nuevoEstado, $permitidos);
     }

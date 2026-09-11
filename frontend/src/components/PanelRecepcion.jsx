@@ -2,7 +2,10 @@ import { useState, useEffect, useMemo } from 'react';
 import { apiFetch } from '../api';
 import ClienteArticuloPicker from './ClienteArticuloPicker';
 import HistorialOrden from './HistorialOrden';
+import EditorRepuestos from './EditorRepuestos';
+import CambioEstadoAdmin from './CambioEstadoAdmin';
 import { formatearEstado, formatearTipoOrden, normalizarEstado } from '../utils/textoUI';
+import { abrirWhatsapp, enlaceSeguimiento } from '../utils/whatsapp';
 
 function antiguedadEstado(fecha) {
   if (!fecha) return null;
@@ -99,6 +102,7 @@ function PanelRecepcion() {
   const [filtroTipo, setFiltroTipo] = useState('todos');
   const [filtroUbicacion, setFiltroUbicacion] = useState('todas');
   const [ordenAntiguedad, setOrdenAntiguedad] = useState('desc');
+  const [ordenCodigo, setOrdenCodigo] = useState(null);
   const [editandoUbicacion, setEditandoUbicacion] = useState(null);
   const [ubicaciones, setUbicaciones] = useState({});
 
@@ -119,8 +123,6 @@ function PanelRecepcion() {
   }, []);
 
   function abrirAvisoEntrega(orden) {
-    const telefono = String(orden.cliente_telefono || '').replace(/\D/g, '');
-    const telefonoWhatsapp = telefono.length === 10 && telefono.startsWith('3') ? `57${telefono}` : telefono;
     const mensaje = [
       ` Hola ${orden.cliente_nombre || orden.cliente_empresa || 'cliente'}, te contactamos desde Expertools.`,
       ' Tu equipo ya está listo para entregar.',
@@ -130,17 +132,38 @@ function PanelRecepcion() {
       '',
       ' Por favor, acércate a Expertools para recoger tu equipo.',
       '',
+      ` Consulta el seguimiento de tu orden aquí: ${enlaceSeguimiento(orden.codigo_seguimiento)}`,
+      '',
       'Instagram: https://www.instagram.com/expertools_herramientas',
       'Ubicación: https://www.google.com/maps/search/?api=1&query=ExperTools%20Reparaci%C3%B3n%20Mantenimiento%20y%20Venta%20de%20Herramientas%2C%20Bogot%C3%A1',
     ].join('\n');
 
-    const ventanaWhatsapp = window.open('', '_blank');
-    const urlWhatsapp = `https://wa.me/${telefonoWhatsapp}?text=${encodeURIComponent(mensaje)}`;
-    if (ventanaWhatsapp) {
-      ventanaWhatsapp.location.href = urlWhatsapp;
-    } else {
-      window.location.assign(urlWhatsapp);
-    }
+    abrirWhatsapp(window.open('', '_blank'), orden.cliente_telefono, mensaje);
+  }
+
+  // Al crear la orden, el cliente recibe de inmediato un WhatsApp con toda
+  // la información de recepción (código, artículo, accesorios, ubicación)
+  // y el link para hacerle seguimiento por su cuenta.
+  function abrirAvisoCreacion(orden, ventanaWhatsapp) {
+    const mensaje = [
+      ` Hola ${orden.cliente_nombre || orden.cliente_empresa || 'cliente'}, te contactamos desde Expertools.`,
+      ' Registramos el ingreso de tu equipo para servicio técnico.',
+      '',
+      `- Código de seguimiento: ${orden.codigo_seguimiento}`,
+      `- Tipo de servicio: ${formatearTipoOrden(orden.tipo)}`,
+      `- Artículo: ${orden.articulo_tipo}${orden.marca ? ` ${orden.marca}` : ''}${orden.modelo ? ` ${orden.modelo}` : ''}`,
+      orden.accesorios ? `- Accesorios recibidos: ${orden.accesorios}` : '',
+      orden.ubicacion ? `- Ubicación: ${orden.ubicacion}` : '',
+      '',
+      ' Te avisaremos por este medio cuando tengamos el diagnóstico y la cotización.',
+      '',
+      ` Consulta el seguimiento de tu orden en cualquier momento aquí: ${enlaceSeguimiento(orden.codigo_seguimiento)}`,
+      '',
+      'Instagram: https://www.instagram.com/expertools_herramientas',
+      'Ubicación: https://www.google.com/maps/search/?api=1&query=ExperTools%20Reparaci%C3%B3n%20Mantenimiento%20y%20Venta%20de%20Herramientas%2C%20Bogot%C3%A1',
+    ].filter(Boolean).join('\n');
+
+    abrirWhatsapp(ventanaWhatsapp, orden.cliente_telefono, mensaje);
   }
 
   async function cambiarEstado(ordenId, nuevoEstado) {
@@ -208,6 +231,7 @@ function PanelRecepcion() {
     }
 
     try {
+      const ventanaWhatsapp = window.open('', '_blank');
       const resultado = await apiFetch('ordenes.php', {
         method: 'POST',
         body: JSON.stringify({ articulo_id: articuloId, tipo, ubicacion: ubicacionInicial }),
@@ -217,7 +241,17 @@ function PanelRecepcion() {
       setArticuloId(null);
       setArticuloDescripcion('');
       setUbicacionInicial('');
-      cargarOrdenes();
+
+      // Recargamos para obtener los datos completos (cliente, artículo, accesorios)
+      // de la orden recién creada y así poder avisarle por WhatsApp con toda la info.
+      const listaActualizada = await apiFetch('ordenes.php');
+      setOrdenes(listaActualizada);
+      const ordenCreada = listaActualizada.find((o) => o.id === resultado.id);
+      if (ordenCreada) {
+        abrirAvisoCreacion(ordenCreada, ventanaWhatsapp);
+      } else if (ventanaWhatsapp) {
+        ventanaWhatsapp.close();
+      }
     } catch (err) {
       setError(err.message);
     }
@@ -251,6 +285,10 @@ function PanelRecepcion() {
     .filter((orden) => filtroTipo === 'todos' || orden.tipo === filtroTipo)
     .filter((orden) => filtroUbicacion === 'todas' || orden.ubicacion === filtroUbicacion)
     .sort((a, b) => {
+      if (ordenCodigo) {
+        const comparacion = String(a.codigo_seguimiento || '').localeCompare(String(b.codigo_seguimiento || ''), undefined, { numeric: true, sensitivity: 'base' });
+        return ordenCodigo === 'asc' ? comparacion : -comparacion;
+      }
       const diasA = antiguedadEstado(a.fecha_ingreso)?.dias || 0;
       const diasB = antiguedadEstado(b.fecha_ingreso)?.dias || 0;
       return ordenAntiguedad === 'asc' ? diasA - diasB : diasB - diasA;
@@ -370,6 +408,8 @@ function PanelRecepcion() {
                 Pasar a: {formatearEstado(siguienteEstado)}
               </button>
             ))}
+            <EditorRepuestos ordenId={orden.id} onGuardado={cargarOrdenes} />
+            <CambioEstadoAdmin ordenId={orden.id} estadoActual={orden.estado_actual} onCambiado={cargarOrdenes} />
             <HistorialOrden ordenId={orden.id} />
           </div>
         ))}
@@ -442,7 +482,15 @@ function PanelRecepcion() {
           <table className="orders-table ordenes-tabla table table-hover table-striped align-middle">
             <thead>
               <tr>
-                <th className="fw-semibold">Código</th>
+                <th className="fw-semibold th-ordenable">
+                  <button
+                    type="button"
+                    className="button-quiet th-sort-btn"
+                    onClick={() => setOrdenCodigo((actual) => (actual === 'asc' ? 'desc' : actual === 'desc' ? null : 'asc'))}
+                  >
+                    Código {ordenCodigo === 'asc' ? '↑' : ordenCodigo === 'desc' ? '↓' : ''}
+                  </button>
+                </th>
                 <th className="fw-semibold">Artículo</th>
                 <th className="fw-semibold">Cliente</th>
                 <th className="fw-semibold">Ubicación</th>
@@ -451,9 +499,9 @@ function PanelRecepcion() {
                   <button
                     type="button"
                     className="button-quiet th-sort-btn"
-                    onClick={() => setOrdenAntiguedad((actual) => (actual === 'desc' ? 'asc' : 'desc'))}
+                    onClick={() => { setOrdenCodigo(null); setOrdenAntiguedad((actual) => (actual === 'desc' ? 'asc' : 'desc')); }}
                   >
-                    Antigüedad {ordenAntiguedad === 'desc' ? '↓' : '↑'}
+                    Antigüedad {!ordenCodigo && (ordenAntiguedad === 'desc' ? '↓' : '↑')}
                   </button>
                 </th>
                 <th className="fw-semibold">Tipo</th>
@@ -513,7 +561,11 @@ function PanelRecepcion() {
                     </span>
                   </td>
                   <td data-label="Tipo">{formatearTipoOrden(orden.tipo)}</td>
-                  <td data-label="Acciones"><HistorialOrden ordenId={orden.id} compacto /></td>
+                  <td data-label="Acciones">
+                    <HistorialOrden ordenId={orden.id} compacto />
+                    <EditorRepuestos ordenId={orden.id} onGuardado={cargarOrdenes} />
+                    <CambioEstadoAdmin ordenId={orden.id} estadoActual={orden.estado_actual} onCambiado={cargarOrdenes} />
+                  </td>
                 </tr>
               ))}
             </tbody>

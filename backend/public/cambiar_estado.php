@@ -48,7 +48,7 @@ try {
 
     // Toda la logica de "que se puede y quien puede" ahora vive en MaquinaEstados,
     // que ya esta probada por separado con PHPUnit (no depende de la base de datos).
-    if (!MaquinaEstados::esTransicionValida($estadoActual, $nuevoEstado)) {
+    if (!MaquinaEstados::esTransicionValida($estadoActual, $nuevoEstado, $usuarioAuth->rol)) {
         $pdo->rollBack();
         http_response_code(422);
         echo json_encode([
