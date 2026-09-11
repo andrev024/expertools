@@ -4,13 +4,36 @@ This template provides a minimal setup to get React working in Vite with HMR and
 
 Currently, two official plugins are available:
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Expertools - frontend
 
-## React Compiler
+Aplicacion React para la gestion de ordenes de reparacion y el seguimiento publico de articulos.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Desarrollo local
 
-## Expanding the ESLint configuration
+Desde esta carpeta:
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+```bash
+npm install
+npm run dev
+```
+
+Vite inicia el frontend en `http://localhost:5173`. Para trabajar con el entorno completo, se recomienda levantar Docker Compose desde la raiz del proyecto; en ese caso el frontend servido por Nginx queda disponible en `http://localhost:5174`.
+
+## Comandos
+
+```bash
+npm run dev      # servidor de desarrollo con hot reload
+npm run build    # compilacion de produccion
+npm run lint     # validacion ESLint
+npm run preview  # servir la compilacion localmente
+```
+
+## Estructura principal
+
+- `src/App.jsx`: rutas y composicion principal de la aplicacion.
+- `src/components/`: paneles y componentes reutilizables.
+- `src/context/`: estado compartido y autenticacion.
+- `src/api.js`: comunicacion con la API PHP.
+- `src/utils/`: utilidades de seguimiento y WhatsApp.
+
+La documentacion general del sistema esta en el [README principal](../README.md).

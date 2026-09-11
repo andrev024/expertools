@@ -15,6 +15,7 @@ Sistema web para gestionar el ciclo completo de mantenimiento y garantía de art
 - [Modelo de datos](#modelo-de-datos)
 - [Máquina de estados](#máquina-de-estados)
 - [Cómo correrlo localmente](#cómo-correrlo-localmente)
+- [Documentación adicional](#documentación-adicional)
 - [Testing](#testing)
 - [CI/CD](#cicd)
 - [Infraestructura como código](#infraestructura-como-código)
@@ -145,6 +146,16 @@ cd frontend
 npm install
 npm run dev
 ```
+
+## Documentación adicional
+
+- [Instalación y configuración](docs/INSTALACION.md)
+- [API REST](docs/API.md)
+- [Flujo de negocio](docs/FLUJO_NEGOCIO.md)
+- [Roles y permisos](docs/ROLES_Y_PERMISOS.md)
+- [Decisiones técnicas](docs/DECISIONES_TECNICAS.md)
+- [Guía de contribución](CONTRIBUTING.md)
+- [Historial de cambios](CHANGELOG.md)
 
 ## Testing
 
