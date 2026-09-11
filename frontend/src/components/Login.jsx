@@ -24,7 +24,7 @@ function Login() {
 
   return (
     <div className="auth-page bg-light min-vh-100">
-      <div className="auth-brand d-flex align-items-center"><img className="auth-logo" src="/logo-expertools.png" alt="Expertools" /></div>
+      <div className="auth-brand d-flex align-items-center"><img className="auth-logo" src="https://art.pixilart.com/sr2e91aa698d6a8.gif" alt="Expertools" /></div>
       <div className="auth-layout container">
         <section className="auth-hero">
           <span className="eyebrow text-uppercase fw-semibold">Taller de reparación</span>

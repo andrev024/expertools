@@ -45,6 +45,15 @@ function esEstadoFinalizado(estado) {
   return /ENTREGAD|CHATARRA|CANCELAD|NO.?AUTORIZAD/.test((estado || '').toUpperCase());
 }
 
+function esOrdenEstancada(orden) {
+  return !esEstadoFinalizado(orden.estado_actual)
+    && (antiguedadEstado(fechaEstado(orden))?.dias || 0) > 28;
+}
+
+function esOrdenPendiente(orden) {
+  return !esEstadoFinalizado(orden.estado_actual) && !esOrdenEstancada(orden);
+}
+
 // Color del indicador de estado: reutiliza el mismo calculo de antiguedad
 // que ya existia (dias en el estado actual) para decidir la severidad.
 function claseColorEstado(orden) {
@@ -102,6 +111,7 @@ function PanelRecepcion() {
 
   const [articuloId, setArticuloId] = useState(null);
   const [articuloDescripcion, setArticuloDescripcion] = useState('');
+  const [reinicioPicker, setReinicioPicker] = useState(0);
   const [tipo, setTipo] = useState('reparacion');
   const [ubicacionInicial, setUbicacionInicial] = useState('');
   const [mensajeExito, setMensajeExito] = useState('');
@@ -110,8 +120,8 @@ function PanelRecepcion() {
   const [filtroEstado, setFiltroEstado] = useState('todos');
   const [filtroTipo, setFiltroTipo] = useState('todos');
   const [filtroUbicacion, setFiltroUbicacion] = useState('todas');
-  const [ordenAntiguedad, setOrdenAntiguedad] = useState('desc');
-  const [ordenCodigo, setOrdenCodigo] = useState(null);
+  const [filtroResumen, setFiltroResumen] = useState('todas');
+  const [ordenCodigo, setOrdenCodigo] = useState('desc');
   const [editandoUbicacion, setEditandoUbicacion] = useState(null);
   const [ubicaciones, setUbicaciones] = useState({});
 
@@ -248,6 +258,8 @@ function PanelRecepcion() {
       setMensajeExito(`Orden creada: ${resultado.codigo_seguimiento}`);
       setArticuloId(null);
       setArticuloDescripcion('');
+      setReinicioPicker((valor) => valor + 1);
+      setTipo('reparacion');
       setUbicacionInicial('');
 
       // Recargamos para obtener los datos completos (cliente, artículo, accesorios)
@@ -281,13 +293,26 @@ function PanelRecepcion() {
 
   // Resumen: se calcula sobre todas las ordenes cargadas, sin filtros aplicados.
   const totalOrdenes = ordenes.length;
-  const pendientesCount = ordenes.filter((o) => !esEstadoFinalizado(o.estado_actual)).length;
-  const retrasadasCount = ordenes.filter(
-    (o) => !esEstadoFinalizado(o.estado_actual) && (antiguedadEstado(fechaEstado(o))?.dias || 0) >= 28
-  ).length;
+  const pendientesCount = ordenes.filter(esOrdenPendiente).length;
+  const estancadasCount = ordenes.filter(esOrdenEstancada).length;
   const esperandoAbonoCount = ordenes.filter((o) => o.estado_actual === 'esperando_abono').length;
 
+  function aplicarFiltroResumen(filtro) {
+    setFiltroResumen(filtro);
+    setFiltroAntiguedad('todas');
+    setBusquedaTexto('');
+    setFiltroEstado('todos');
+    setFiltroTipo('todos');
+    setFiltroUbicacion('todas');
+  }
+
   const ordenesTabla = ordenes
+    .filter((orden) => (
+      filtroResumen === 'todas'
+      || (filtroResumen === 'pendientes' && esOrdenPendiente(orden))
+      || (filtroResumen === 'estancadas' && esOrdenEstancada(orden))
+      || (filtroResumen === 'esperando_abono' && orden.estado_actual === 'esperando_abono')
+    ))
     .filter((orden) => coincideFiltroAntiguedad(orden.fecha_ingreso, filtroAntiguedad))
     .filter((orden) => coincideTextoBusqueda(orden, busquedaTexto))
     .filter((orden) => filtroEstado === 'todos' || normalizarEstado(orden.estado_actual) === filtroEstado)
@@ -298,9 +323,7 @@ function PanelRecepcion() {
         const comparacion = String(a.codigo_seguimiento || '').localeCompare(String(b.codigo_seguimiento || ''), undefined, { numeric: true, sensitivity: 'base' });
         return ordenCodigo === 'asc' ? comparacion : -comparacion;
       }
-      const diasA = antiguedadEstado(a.fecha_ingreso)?.dias || 0;
-      const diasB = antiguedadEstado(b.fecha_ingreso)?.dias || 0;
-      return ordenAntiguedad === 'asc' ? diasA - diasB : diasB - diasA;
+      return 0;
     });
 
   return (
@@ -308,6 +331,7 @@ function PanelRecepcion() {
       <h2 className="h4 border-start border-4 ps-3">Crear nueva orden</h2>
       <form onSubmit={crearOrden} className="card card-body shadow-sm rounded-3 border-0 mb-4">
         <ClienteArticuloPicker
+          key={reinicioPicker}
           onArticuloSeleccionado={(id, descripcion) => {
             setArticuloId(id);
             setArticuloDescripcion(descripcion);
@@ -425,10 +449,30 @@ function PanelRecepcion() {
 
       <h2 className="h4 border-start border-4 ps-3">Todas las órdenes</h2>
       <div className="resumen-ordenes" aria-label="Resumen de órdenes">
-        <span className="resumen-chip"><strong>{totalOrdenes}</strong> Todas</span>
-        <span className="resumen-chip"><strong>{pendientesCount}</strong> Pendientes</span>
-        <span className="resumen-chip resumen-chip-alerta"><strong>{retrasadasCount}</strong> Retrasadas</span>
-        <span className="resumen-chip"><strong>{esperandoAbonoCount}</strong> Esperando abono</span>
+        <button type="button" className="resumen-chip resumen-chip-button" onClick={() => aplicarFiltroResumen('todas')}>
+          <strong>{totalOrdenes}</strong> Todas
+        </button>
+        <button
+          type="button"
+          className="resumen-chip resumen-chip-button"
+          title=" Órdenes que todavía no han terminado su proceso."
+          aria-label={`Pendientes: ${pendientesCount}. Órdenes que todavía no han terminado su proceso.`}
+          onClick={() => aplicarFiltroResumen('pendientes')}
+        >
+          <strong>{pendientesCount}</strong> Pendientes
+        </button>
+        <button
+          type="button"
+          className="resumen-chip resumen-chip-button resumen-chip-alerta"
+          title="Órdenes que todavía no han terminado su proceso y que llevan 28 días o más en algún proceso quietas."
+          aria-label={`Estancadas: ${estancadasCount}. Órdenes que todavía no han terminado su proceso y que llevan 28 días o más en algún proceso.`}
+          onClick={() => aplicarFiltroResumen('estancadas')}
+        >
+          <strong>{estancadasCount}</strong> Estancadas
+        </button>
+        <button type="button" className="resumen-chip resumen-chip-button" onClick={() => aplicarFiltroResumen('esperando_abono')}>
+          <strong>{esperandoAbonoCount}</strong> Esperando abono
+        </button>
       </div>
       <div className="filtros-bar">
         <div className="filtro-campo">
@@ -495,7 +539,7 @@ function PanelRecepcion() {
                   <button
                     type="button"
                     className="button-quiet th-sort-btn"
-                    onClick={() => setOrdenCodigo((actual) => (actual === 'asc' ? 'desc' : actual === 'desc' ? null : 'asc'))}
+                    onClick={() => setOrdenCodigo((actual) => (actual === 'asc' ? 'desc' : 'asc'))}
                   >
                     Código {ordenCodigo === 'asc' ? '↑' : ordenCodigo === 'desc' ? '↓' : ''}
                   </button>
@@ -504,15 +548,7 @@ function PanelRecepcion() {
                 <th className="fw-semibold">Cliente</th>
                 <th className="fw-semibold">Ubicación</th>
                 <th className="fw-semibold">Estado</th>
-                <th className="fw-semibold th-ordenable">
-                  <button
-                    type="button"
-                    className="button-quiet th-sort-btn"
-                    onClick={() => { setOrdenCodigo(null); setOrdenAntiguedad((actual) => (actual === 'desc' ? 'asc' : 'desc')); }}
-                  >
-                    Antigüedad {!ordenCodigo && (ordenAntiguedad === 'desc' ? '↓' : '↑')}
-                  </button>
-                </th>
+                <th className="fw-semibold">Antigüedad</th>
                 <th className="fw-semibold">Tipo</th>
                 <th className="fw-semibold">Acciones</th>
               </tr>

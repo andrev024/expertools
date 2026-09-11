@@ -284,6 +284,17 @@ button:not(.button-quiet):hover, .button-primary:hover { background: var(--accen
 .resumen-chip { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); font-size: 13px; color: #495057; }
 .resumen-chip strong { color: var(--text-h); font-size: 14px; }
 .resumen-chip-alerta strong { color: #b02a37; }
+
+.resumen-chip-button {
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.resumen-chip-button:hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
 .filtros-bar { display: flex; align-items: flex-end; gap: 14px; flex-wrap: wrap; margin-bottom: 14px; }
 .filtro-campo { display: flex; flex-direction: column; gap: 4px; }
 .filtro-campo label { font-size: 11px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; color: #6c757d; }
