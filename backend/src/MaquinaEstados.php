@@ -10,7 +10,7 @@ class MaquinaEstados
         'en_diagnostico' => ['chatarra', 'cotizado', 'esperando_abono'],
         'cotizado' => ['en_reparacion', 'esperando_abono', 'esperando_tecnico', 'no_autorizado', 'esperando_respuesta', 'sin_respuesta'],
         'esperando_abono' => ['en_reparacion', 'esperando_tecnico', 'no_autorizado'],
-        'esperando_tecnico' => ['en_diagnostico'],
+        'esperando_tecnico' => ['en_reparacion'],
         'esperando_respuesta' => ['en_reparacion', 'no_autorizado'],
         'sin_respuesta' => ['en_diagnostico'],
         'en_reparacion' => ['esperando_repuesto', 'finalizado_tecnico'],

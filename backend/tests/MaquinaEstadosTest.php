@@ -72,7 +72,9 @@ class MaquinaEstadosTest extends TestCase
     public function testUnaAprobacionDeRecepcionDejaLaOrdenEsperandoTecnico(): void
     {
         $this->assertTrue(MaquinaEstados::esTransicionValida('cotizado', 'esperando_tecnico'));
-        $this->assertTrue(MaquinaEstados::esTransicionValida('esperando_tecnico', 'en_diagnostico'));
+        // La cotizacion ya fue aprobada: al retomarla el tecnico va directo a reparacion, no a diagnostico
+        $this->assertTrue(MaquinaEstados::esTransicionValida('esperando_tecnico', 'en_reparacion'));
+        $this->assertFalse(MaquinaEstados::esTransicionValida('esperando_tecnico', 'en_diagnostico'));
         $this->assertTrue(MaquinaEstados::rolPuedeTransicionar('tecnico', 'esperando_tecnico'));
     }
 }

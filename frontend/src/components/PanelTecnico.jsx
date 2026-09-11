@@ -121,9 +121,11 @@ function PanelTecnico() {
     }
   }
 
-  // Retoma una orden recibida o sin respuesta para iniciar el diagnóstico.
-  function tomarOrden(ordenId) {
-    cambiarEstadoSimple(ordenId, 'en_diagnostico');
+  // Retoma una orden: si viene de esperando_tecnico la cotizacion ya fue aprobada,
+  // asi que pasa directo a reparacion; si no, inicia el diagnostico.
+  function tomarOrden(ordenId, estadoActual) {
+    const nuevoEstado = estadoActual === 'esperando_tecnico' ? 'en_reparacion' : 'en_diagnostico';
+    cambiarEstadoSimple(ordenId, nuevoEstado);
   }
 
   function marcarChatarra(ordenId) {
@@ -303,7 +305,9 @@ function PanelTecnico() {
 
           {/* Estado: recibido -> boton para tomar la orden */}
           {(orden.estado_actual === 'recibido' || orden.estado_actual === 'sin_respuesta' || orden.estado_actual === 'esperando_tecnico') && (
-            <button className="button button-primary btn btn-primary" onClick={() => tomarOrden(orden.id)}>Tomar orden (empezar diagnóstico)</button>
+            <button className="button button-primary btn btn-primary" onClick={() => tomarOrden(orden.id, orden.estado_actual)}>
+              {orden.estado_actual === 'esperando_tecnico' ? 'Tomar orden (iniciar reparación)' : 'Tomar orden (empezar diagnóstico)'}
+            </button>
           )}
 
           {/* Estado: en_diagnostico -> formulario de cotizacion + opcion chatarra */}
