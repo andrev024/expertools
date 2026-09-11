@@ -230,8 +230,9 @@ function PanelRecepcion() {
       return;
     }
 
+    const ventanaWhatsapp = window.open('', '_blank');
+
     try {
-      const ventanaWhatsapp = window.open('', '_blank');
       const resultado = await apiFetch('ordenes.php', {
         method: 'POST',
         body: JSON.stringify({ articulo_id: articuloId, tipo, ubicacion: ubicacionInicial }),
@@ -246,13 +247,14 @@ function PanelRecepcion() {
       // de la orden recién creada y así poder avisarle por WhatsApp con toda la info.
       const listaActualizada = await apiFetch('ordenes.php');
       setOrdenes(listaActualizada);
-      const ordenCreada = listaActualizada.find((o) => o.id === resultado.id);
+      const ordenCreada = listaActualizada.find((o) => String(o.id) === String(resultado.id));
       if (ordenCreada) {
         abrirAvisoCreacion(ordenCreada, ventanaWhatsapp);
       } else if (ventanaWhatsapp) {
         ventanaWhatsapp.close();
       }
     } catch (err) {
+      if (ventanaWhatsapp) ventanaWhatsapp.close();
       setError(err.message);
     }
   }

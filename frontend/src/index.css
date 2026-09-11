@@ -252,13 +252,13 @@ button:not(.button-quiet):hover, .button-primary:hover { background: var(--accen
 /* table-layout fijo: evita que la columna sticky "Codigo" empuje/tape a
    "Articulo" al hacer scroll horizontal (bug de position:sticky con layout auto). */
 .ordenes-tabla { table-layout: fixed; min-width: 1180px; }
-.ordenes-tabla th:nth-child(1), .ordenes-tabla td:nth-child(1) { width: 85px; }
-.ordenes-tabla th:nth-child(2), .ordenes-tabla td:nth-child(2) { width: 135px; }
-.ordenes-tabla th:nth-child(3), .ordenes-tabla td:nth-child(3) { width: 190px; }
-.ordenes-tabla th:nth-child(4), .ordenes-tabla td:nth-child(4) { width: 140px; }
-.ordenes-tabla th:nth-child(5), .ordenes-tabla td:nth-child(5) { width: 190px; }
-.ordenes-tabla th:nth-child(6), .ordenes-tabla td:nth-child(6) { width: 120px; }
-.ordenes-tabla th:nth-child(7), .ordenes-tabla td:nth-child(7) { width: 110px; }
+.ordenes-tabla th:nth-child(1), .ordenes-tabla td:nth-child(1) { width: 95px; }
+.ordenes-tabla th:nth-child(2), .ordenes-tabla td:nth-child(2) { width: 115px; }
+.ordenes-tabla th:nth-child(3), .ordenes-tabla td:nth-child(3) { width: 120px; }
+.ordenes-tabla th:nth-child(4), .ordenes-tabla td:nth-child(4) { width: 125px; }
+.ordenes-tabla th:nth-child(5), .ordenes-tabla td:nth-child(5) { width: 145px; }
+.ordenes-tabla th:nth-child(6), .ordenes-tabla td:nth-child(6) { width: 100px; }
+.ordenes-tabla th:nth-child(7), .ordenes-tabla td:nth-child(7) { width: 85px; }
 .ordenes-tabla th:nth-child(8), .ordenes-tabla td:nth-child(8) { width: 130px; }
 .user-management { color: var(--text); font-family: inherit; }
 .user-management h2 { color: var(--text-h); }
@@ -346,6 +346,7 @@ button:not(.button-quiet):hover, .button-primary:hover { background: var(--accen
 .history-list p { margin: 5px 0 2px; color: #495057; font-size: 13px; }
 .history-modal-overlay { position: fixed; inset: 0; background: rgba(15, 40, 40, .45); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px; }
 .history-modal { width: 100%; max-width: 480px; max-height: 80vh; overflow-y: auto; background: var(--surface); border-radius: 10px; box-shadow: 0 20px 50px rgba(0, 0, 0, .25); padding: 20px; }
+.history-modal-repuestos { max-width: 900px; }
 .history-modal-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
 .history-modal-header strong { color: var(--text-h); font-size: 15px; }
 .history-modal-close { min-height: auto; padding: 2px 8px; border: 0; background: transparent; color: #6c757d; font-size: 22px; line-height: 1; }

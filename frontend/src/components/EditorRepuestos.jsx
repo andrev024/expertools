@@ -84,40 +84,46 @@ function EditorRepuestos({ ordenId, onGuardado }) {
         {abierto ? 'Cerrar edición de repuestos' : 'Editar repuestos'}
       </button>
       {abierto && (
-        <div className="card card-body shadow-sm rounded-3 border-0 mt-2">
-          {cargando && <p className="mb-0">Cargando repuestos...</p>}
-          {error && <p className="alert alert-danger py-2">{error}</p>}
-          {!cargando && (
-            <>
-              {repuestos.map((repuesto, indice) => (
-                <div className="row g-2 mb-2" key={`repuesto-editor-${indice}`}>
-                  <div className="col-md-3">
-                    <input className="form-control" placeholder="Nombre" value={repuesto.referencia} onChange={(e) => actualizarRepuesto(indice, 'referencia', e.target.value)} />
+        <div className="history-modal-overlay" onClick={() => setAbierto(false)}>
+          <div className="history-modal history-modal-repuestos" role="dialog" aria-modal="true" aria-label="Editar repuestos" onClick={(e) => e.stopPropagation()}>
+            <div className="history-modal-header">
+              <strong>Editar repuestos</strong>
+              <button type="button" className="history-modal-close" onClick={() => setAbierto(false)} aria-label="Cerrar">×</button>
+            </div>
+            {cargando && <p className="mb-0">Cargando repuestos...</p>}
+            {error && <p className="alert alert-danger py-2">{error}</p>}
+            {!cargando && (
+              <>
+                {repuestos.map((repuesto, indice) => (
+                  <div className="row g-2 mb-2" key={`repuesto-editor-${indice}`}>
+                    <div className="col-md-3">
+                      <input className="form-control" placeholder="Nombre" value={repuesto.referencia} onChange={(e) => actualizarRepuesto(indice, 'referencia', e.target.value)} />
+                    </div>
+                    <div className="col-md-2">
+                      <input className="form-control" type="number" min="1" placeholder="Cantidad" value={repuesto.cantidad} onChange={(e) => actualizarRepuesto(indice, 'cantidad', e.target.value)} />
+                    </div>
+                    <div className="col-md-2">
+                      <input className="form-control" type="number" min="0" step="0.01" placeholder="Valor unitario" value={repuesto.montoUnitario} onChange={(e) => actualizarRepuesto(indice, 'montoUnitario', e.target.value)} />
+                      <small className="text-muted">Total: ${(Number(repuesto.cantidad || 0) * Number(repuesto.montoUnitario || 0)).toLocaleString('es-CO')}</small>
+                    </div>
+                    <div className="col-md-3">
+                      <input className="form-control" placeholder="Referencia (opcional)" value={repuesto.descripcion} onChange={(e) => actualizarRepuesto(indice, 'descripcion', e.target.value)} />
+                    </div>
+                    <div className="col-md-2">
+                      <button type="button" className="button button-secondary btn btn-outline-secondary w-100" onClick={() => quitarRepuesto(indice)}>Quitar</button>
+                    </div>
                   </div>
-                  <div className="col-md-2">
-                    <input className="form-control" type="number" min="1" placeholder="Cantidad" value={repuesto.cantidad} onChange={(e) => actualizarRepuesto(indice, 'cantidad', e.target.value)} />
-                  </div>
-                  <div className="col-md-2">
-                    <input className="form-control" type="number" min="0" step="0.01" placeholder="Valor unitario" value={repuesto.montoUnitario} onChange={(e) => actualizarRepuesto(indice, 'montoUnitario', e.target.value)} />
-                    <small className="text-muted">Total: ${(Number(repuesto.cantidad || 0) * Number(repuesto.montoUnitario || 0)).toLocaleString('es-CO')}</small>
-                  </div>
-                  <div className="col-md-3">
-                    <input className="form-control" placeholder="Referencia (opcional)" value={repuesto.descripcion} onChange={(e) => actualizarRepuesto(indice, 'descripcion', e.target.value)} />
-                  </div>
-                  <div className="col-md-2">
-                    <button type="button" className="button button-secondary btn btn-outline-secondary w-100" onClick={() => quitarRepuesto(indice)}>Quitar</button>
-                  </div>
+                ))}
+                <p className="fw-semibold">Total: ${total.toLocaleString('es-CO')}</p>
+                <div className="d-flex gap-2">
+                  <button type="button" className="button button-secondary btn btn-outline-secondary" onClick={agregarRepuesto}>Agregar repuesto</button>
+                  <button type="button" className="button button-primary btn btn-primary" onClick={guardar} disabled={guardando}>
+                    {guardando ? 'Guardando...' : 'Guardar repuestos'}
+                  </button>
                 </div>
-              ))}
-              <p className="fw-semibold">Total: ${total.toLocaleString('es-CO')}</p>
-              <div className="d-flex gap-2">
-                <button type="button" className="button button-secondary btn btn-outline-secondary" onClick={agregarRepuesto}>Agregar repuesto</button>
-                <button type="button" className="button button-primary btn btn-primary" onClick={guardar} disabled={guardando}>
-                  {guardando ? 'Guardando...' : 'Guardar repuestos'}
-                </button>
-              </div>
-            </>
-          )}
+              </>
+            )}
+          </div>
         </div>
       )}
     </div>
