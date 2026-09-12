@@ -420,7 +420,7 @@ function PanelRecepcion() {
             </div>
             <p className="order-meta">{orden.cliente_nombre || orden.cliente_empresa || 'Cliente sin nombre'} · {orden.articulo_tipo} {orden.marca || ''}</p>
             <p className="small text-secondary">Estado desde: {mostrarFecha(fechaEstado(orden))}</p>
-            {orden.accesorios && <p className="small text-secondary">Accesorios: {orden.accesorios}</p>}
+            {orden.accesorios?.length > 0 && <p className="small text-secondary">Accesorios: {formatearAccesorios(orden.accesorios)}</p>}
             <div className="order-location mb-3">
               <strong>Ubicación:</strong> {orden.ubicacion || 'Sin ubicación registrada'}
               {editandoUbicacion === orden.id ? (
