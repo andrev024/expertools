@@ -9,7 +9,9 @@ import { abrirWhatsapp, enlaceSeguimiento } from '../utils/whatsapp';
 
 function antiguedadEstado(fecha) {
   if (!fecha) return null;
-  const horas = Math.max(0, Math.floor((Date.now() - parsearFechaBogota(fecha).getTime()) / 3600000));
+  const fechaParseada = parsearFechaBogota(fecha);
+  if (!fechaParseada || Number.isNaN(fechaParseada.getTime())) return null;
+  const horas = Math.max(0, Math.floor((Date.now() - fechaParseada.getTime()) / 3600000));
   const dias = Math.floor(horas / 24);
   return {
     horas,
@@ -19,11 +21,18 @@ function antiguedadEstado(fecha) {
 }
 
 function mostrarFecha(fecha) {
-  return fecha ? parsearFechaBogota(fecha).toLocaleString('es-CO', { timeZone: 'America/Bogota' }) : 'sin fecha';
+  const fechaParseada = parsearFechaBogota(fecha);
+  return fechaParseada && !Number.isNaN(fechaParseada.getTime())
+    ? fechaParseada.toLocaleString('es-CO', { timeZone: 'America/Bogota' })
+    : 'sin fecha';
 }
 
 function parsearFechaBogota(fecha) {
-  return new Date(`${fecha.replace(' ', 'T')}-05:00`);
+  if (!fecha) return null;
+  const valor = String(fecha).trim();
+  const tieneZonaHoraria = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(valor);
+  const fechaNormalizada = valor.includes('T') ? valor : valor.replace(' ', 'T');
+  return new Date(tieneZonaHoraria ? fechaNormalizada : `${fechaNormalizada}-05:00`);
 }
 
 function formatearAccesorios(accesorios) {
