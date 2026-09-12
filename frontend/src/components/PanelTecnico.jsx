@@ -303,7 +303,12 @@ function PanelTecnico() {
           <div className="order-summary-grid">
             <p><span>Cliente</span>{orden.cliente_nombre || orden.cliente_empresa || 'Cliente sin nombre'} <small>{orden.cliente_telefono || 'sin teléfono'}</small></p>
             <p><span>Artículo</span>{orden.articulo_tipo} {orden.marca || ''} {orden.modelo || ''}</p>
-            {orden.accesorios && <p><span>Accesorios</span>{orden.accesorios}</p>}
+            {Array.isArray(orden.accesorios) && orden.accesorios.length > 0 && (
+              <p>
+                <span>Accesorios</span>
+                {orden.accesorios.map((accesorio) => accesorio.nombre || accesorio.descripcion).filter(Boolean).join(', ')}
+              </p>
+            )}
           </div>
 
           {/* Estado: recibido -> boton para tomar la orden */}
