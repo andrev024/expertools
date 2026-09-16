@@ -23,9 +23,42 @@ if ($metodo === 'POST') {
     listarClientes($pdo);
 } elseif ($metodo === 'PATCH') {
     actualizarCliente($pdo);
+} elseif ($metodo === 'DELETE') {
+    eliminarCliente($pdo);
 } else {
     http_response_code(405);
     echo json_encode(['error' => 'Método no permitido']);
+}
+
+function eliminarCliente(\PDO $pdo): void
+{
+    $clienteId = $_GET['cliente_id'] ?? null;
+
+    if (!$clienteId) {
+        http_response_code(400);
+        echo json_encode(['error' => 'cliente_id es requerido']);
+        return;
+    }
+
+    $clienteStmt = $pdo->prepare('SELECT id FROM cliente WHERE id = ?');
+    $clienteStmt->execute([$clienteId]);
+    if (!$clienteStmt->fetchColumn()) {
+        http_response_code(404);
+        echo json_encode(['error' => 'Cliente no encontrado']);
+        return;
+    }
+
+    try {
+        $stmt = $pdo->prepare('DELETE FROM cliente WHERE id = ?');
+        $stmt->execute([$clienteId]);
+    } catch (\PDOException $e) {
+        error_log('Error eliminando cliente ' . $clienteId . ': ' . $e->getMessage());
+        http_response_code(409);
+        echo json_encode(['error' => 'No se puede eliminar: el cliente tiene artículos u órdenes registradas.']);
+        return;
+    }
+
+    echo json_encode(['id' => $clienteId, 'eliminado' => true]);
 }
 
 function actualizarCliente(\PDO $pdo, ?array $datos = null): void

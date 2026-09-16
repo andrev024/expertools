@@ -124,6 +124,26 @@ function ClienteArticuloPicker({ onArticuloSeleccionado }) {
     setClienteEditado(null);
   }
 
+  const [eliminandoClienteId, setEliminandoClienteId] = useState(null);
+
+  async function eliminarCliente(cliente) {
+    const nombreMostrar = cliente.nombre || cliente.empresa || 'este cliente';
+    if (!window.confirm(`¿Eliminar a ${nombreMostrar}? Esta acción no se puede deshacer.`)) return;
+    setError('');
+    setEliminandoClienteId(cliente.id);
+    try {
+      await apiFetch(`clientes.php?cliente_id=${cliente.id}`, { method: 'DELETE' });
+      setClientes((clientesActuales) => clientesActuales.filter((c) => String(c.id) !== String(cliente.id)));
+      if (String(clienteSeleccionado?.id) === String(cliente.id)) {
+        cambiarCliente();
+      }
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setEliminandoClienteId(null);
+    }
+  }
+
   async function guardarClienteDesdeTabla() {
     if (!clienteEditado) return;
     setError('');
@@ -352,6 +372,14 @@ function ClienteArticuloPicker({ onArticuloSeleccionado }) {
                     <td data-label="Acción" className="clientes-acciones">
                       <button type="button" onClick={() => seleccionarCliente(c)}>Seleccionar</button>
                       <button type="button" className="button-quiet" onClick={() => iniciarEdicionCliente(c)}>Editar</button>
+                      <button
+                        type="button"
+                        className="button-quiet button-danger"
+                        onClick={() => eliminarCliente(c)}
+                        disabled={eliminandoClienteId === c.id}
+                      >
+                        {eliminandoClienteId === c.id ? 'Eliminando...' : 'Eliminar'}
+                      </button>
                     </td>
                   </tr>
                 </Fragment>
