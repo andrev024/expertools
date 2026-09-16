@@ -233,18 +233,6 @@ function ClienteArticuloPicker({ onArticuloSeleccionado }) {
     cancelarEdicionArticulo();
   }
 
-  function cambiarDatoCliente(campo, valor) {
-    const clienteActualizado = { ...clienteSeleccionado, [campo]: valor };
-    setClienteSeleccionado(clienteActualizado);
-    if (articuloSeleccionado) {
-      const descripcion = `${articuloSeleccionado.tipo} ${articuloSeleccionado.marca || ''} - ${clienteActualizado.nombre || clienteActualizado.empresa || 'Cliente'}`;
-      onArticuloSeleccionado(articuloSeleccionado.id, descripcion, {
-        cliente: clienteActualizado,
-        articulo: articuloSeleccionado,
-      });
-    }
-  }
-
   async function crearClienteYArticulo() {
     setError('');
 
@@ -557,17 +545,6 @@ function ClienteArticuloPicker({ onArticuloSeleccionado }) {
                   style={{ display: 'block', marginBottom: '6px', width: '100%' }}
                 />
               ))}
-            </>
-          )}
-          {clienteSeleccionado && (
-            <>
-              <label>Teléfono del cliente</label>
-              <input
-                placeholder="Teléfono"
-                value={clienteSeleccionado.telefono || ''}
-                onChange={(e) => cambiarDatoCliente('telefono', e.target.value)}
-                style={{ display: 'block', marginBottom: '6px', width: '100%' }}
-              />
             </>
           )}
 
