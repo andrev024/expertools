@@ -456,6 +456,7 @@ function ClienteArticuloPicker({ onArticuloSeleccionado }) {
                 <tr>
                   <th scope="col">Artículo</th>
                   <th scope="col">Marca / modelo</th>
+                  <th scope="col">Accesorios</th>
                   <th scope="col">Serial</th>
                   <th scope="col">Acción</th>
                 </tr>
@@ -465,6 +466,9 @@ function ClienteArticuloPicker({ onArticuloSeleccionado }) {
               <tr key={a.id}>
                 <td data-label="Artículo"><strong>{a.tipo || 'Sin tipo'}</strong></td>
                 <td data-label="Marca / modelo">{[a.marca, a.modelo].filter(Boolean).join(' ') || 'Sin información'}</td>
+                <td data-label="Accesorios" className="articulo-accesorios-celda" title={normalizarAccesorios(a.accesorios).map((acc) => acc.nombre).filter(Boolean).join(', ')}>
+                  {normalizarAccesorios(a.accesorios).map((acc) => acc.nombre).filter(Boolean).join(', ') || 'Sin accesorios'}
+                </td>
                 <td data-label="Serial">{a.serial || 'Sin serial'}</td>
                 <td data-label="Acción">
                   <button type="button" onClick={() => seleccionarArticulo(a)}>Usar este artículo</button>
