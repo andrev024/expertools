@@ -71,6 +71,19 @@ const ESTADOS_CON_COTIZACION = [
   'en_reparacion', 'esperando_repuesto', 'finalizado_tecnico', 'en_revision_recepcion', 'listo_para_entregar',
 ];
 
+// Precio sugerido de mano de obra por tipo de artículo. Falta definir los valores
+// reales por tipo de máquina; mientras tanto queda en blanco para que el técnico lo digite.
+const PRECIO_MANO_OBRA_POR_TIPO = {};
+
+function repuestoManoObraInicial(tipoArticulo) {
+  return {
+    referencia: 'Mano de obra',
+    cantidad: 1,
+    montoUnitario: PRECIO_MANO_OBRA_POR_TIPO[tipoArticulo] ?? '',
+    descripcion: '',
+  };
+}
+
 function PanelTecnico() {
   const [ordenes, setOrdenes] = useState([]);
   const [cargando, setCargando] = useState(true);
@@ -148,7 +161,9 @@ function PanelTecnico() {
   }
 
   function obtenerRepuestos(ordenId) {
-    return formsCotizacion[ordenId]?.repuestos || [{ referencia: '', cantidad: 1, montoUnitario: '', descripcion: '' }];
+    if (formsCotizacion[ordenId]?.repuestos) return formsCotizacion[ordenId].repuestos;
+    const orden = ordenes.find((item) => item.id === ordenId);
+    return [repuestoManoObraInicial(orden?.articulo_tipo)];
   }
 
   function actualizarRepuesto(ordenId, indice, campo, valor) {
@@ -167,7 +182,8 @@ function PanelTecnico() {
 
   function quitarRepuesto(ordenId, indice) {
     const repuestos = obtenerRepuestos(ordenId).filter((_, posicion) => posicion !== indice);
-    actualizarFormCotizacion(ordenId, 'repuestos', repuestos.length ? repuestos : [{ referencia: '', cantidad: 1, montoUnitario: '', descripcion: '' }]);
+    const orden = ordenes.find((item) => item.id === ordenId);
+    actualizarFormCotizacion(ordenId, 'repuestos', repuestos.length ? repuestos : [repuestoManoObraInicial(orden?.articulo_tipo)]);
   }
 
   async function enviarCotizacion(ordenId) {
