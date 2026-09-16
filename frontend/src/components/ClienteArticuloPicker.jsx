@@ -134,6 +134,9 @@ function ClienteArticuloPicker({ onArticuloSeleccionado }) {
     try {
       await apiFetch(`clientes.php?cliente_id=${cliente.id}`, { method: 'DELETE' });
       setClientes((clientesActuales) => clientesActuales.filter((c) => String(c.id) !== String(cliente.id)));
+      if (String(clienteEditandoId) === String(cliente.id)) {
+        cancelarEdicionCliente();
+      }
       if (String(clienteSeleccionado?.id) === String(cliente.id)) {
         cambiarCliente();
       }
@@ -372,14 +375,6 @@ function ClienteArticuloPicker({ onArticuloSeleccionado }) {
                     <td data-label="Acción" className="clientes-acciones">
                       <button type="button" onClick={() => seleccionarCliente(c)}>Seleccionar</button>
                       <button type="button" className="button-quiet" onClick={() => iniciarEdicionCliente(c)}>Editar</button>
-                      <button
-                        type="button"
-                        className="button-quiet button-danger"
-                        onClick={() => eliminarCliente(c)}
-                        disabled={eliminandoClienteId === c.id}
-                      >
-                        {eliminandoClienteId === c.id ? 'Eliminando...' : 'Eliminar'}
-                      </button>
                     </td>
                   </tr>
                 </Fragment>
@@ -414,6 +409,14 @@ function ClienteArticuloPicker({ onArticuloSeleccionado }) {
                       {guardandoCliente ? 'Guardando...' : 'Guardar'}
                     </button>
                     <button type="button" className="button-quiet" onClick={cancelarEdicionCliente}>Cancelar</button>
+                    <button
+                      type="button"
+                      className="button-quiet button-danger"
+                      onClick={() => eliminarCliente(clienteEditado)}
+                      disabled={eliminandoClienteId === clienteEditado.id}
+                    >
+                      {eliminandoClienteId === clienteEditado.id ? 'Eliminando...' : 'Eliminar'}
+                    </button>
                   </div>
                 </div>
               </div>
