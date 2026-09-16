@@ -48,10 +48,39 @@ function eliminarCliente(\PDO $pdo): void
         return;
     }
 
+    // Si el cliente tiene articulos con ordenes de servicio, no se puede borrar:
+    // esas ordenes son historial de negocio y no deben perderse por accidente.
+    $ordenesStmt = $pdo->prepare(
+        'SELECT COUNT(*) FROM orden_servicio os
+         JOIN articulo a ON a.id = os.articulo_id
+         WHERE a.cliente_id = ?'
+    );
+    $ordenesStmt->execute([$clienteId]);
+    if ((int) $ordenesStmt->fetchColumn() > 0) {
+        http_response_code(409);
+        echo json_encode(['error' => 'No se puede eliminar: el cliente tiene órdenes de servicio registradas.']);
+        return;
+    }
+
+    // El cliente puede tener articulos sin ninguna orden asociada (p. ej. se
+    // registraron por error). Esos si se borran en cascada junto al cliente.
+    $pdo->beginTransaction();
     try {
+        $articulosStmt = $pdo->prepare('SELECT id FROM articulo WHERE cliente_id = ?');
+        $articulosStmt->execute([$clienteId]);
+        $articuloIds = $articulosStmt->fetchAll(\PDO::FETCH_COLUMN);
+
+        if ($articuloIds) {
+            $marcadores = implode(',', array_fill(0, count($articuloIds), '?'));
+            $pdo->prepare("DELETE FROM accesorio WHERE articulo_id IN ({$marcadores})")->execute($articuloIds);
+            $pdo->prepare("DELETE FROM articulo WHERE id IN ({$marcadores})")->execute($articuloIds);
+        }
+
         $stmt = $pdo->prepare('DELETE FROM cliente WHERE id = ?');
         $stmt->execute([$clienteId]);
+        $pdo->commit();
     } catch (\PDOException $e) {
+        $pdo->rollBack();
         error_log('Error eliminando cliente ' . $clienteId . ': ' . $e->getMessage());
         http_response_code(409);
         echo json_encode(['error' => 'No se puede eliminar: el cliente tiene artículos u órdenes registradas.']);

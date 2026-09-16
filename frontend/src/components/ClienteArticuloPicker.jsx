@@ -128,7 +128,7 @@ function ClienteArticuloPicker({ onArticuloSeleccionado }) {
 
   async function eliminarCliente(cliente) {
     const nombreMostrar = cliente.nombre || cliente.empresa || 'este cliente';
-    if (!window.confirm(`¿Eliminar a ${nombreMostrar}? Esta acción no se puede deshacer.`)) return;
+    if (!window.confirm(`¿Eliminar a ${nombreMostrar}? Esto también borrará sus artículos sin órdenes. Esta acción no se puede deshacer.`)) return;
     setError('');
     setEliminandoClienteId(cliente.id);
     try {
