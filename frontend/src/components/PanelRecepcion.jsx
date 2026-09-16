@@ -119,6 +119,7 @@ function PanelRecepcion() {
   const [comentarios, setComentarios] = useState({});
 
   const [articuloId, setArticuloId] = useState(null);
+  const [datosOrdenPendientes, setDatosOrdenPendientes] = useState({});
   const [articuloDescripcion, setArticuloDescripcion] = useState('');
   const [reinicioPicker, setReinicioPicker] = useState(0);
   const [tipo, setTipo] = useState('reparacion');
@@ -261,11 +262,12 @@ function PanelRecepcion() {
     try {
       const resultado = await apiFetch('ordenes.php', {
         method: 'POST',
-        body: JSON.stringify({ articulo_id: articuloId, tipo, ubicacion: ubicacionInicial }),
+        body: JSON.stringify({ articulo_id: articuloId, tipo, ubicacion: ubicacionInicial, ...datosOrdenPendientes }),
       });
 
       setMensajeExito(`Orden creada: ${resultado.codigo_seguimiento}`);
       setArticuloId(null);
+      setDatosOrdenPendientes({});
       setArticuloDescripcion('');
       setReinicioPicker((valor) => valor + 1);
       setTipo('reparacion');
@@ -341,9 +343,10 @@ function PanelRecepcion() {
       <form onSubmit={crearOrden} className="card card-body shadow-sm rounded-3 border-0 mb-4">
         <ClienteArticuloPicker
           key={reinicioPicker}
-          onArticuloSeleccionado={(id, descripcion) => {
+          onArticuloSeleccionado={(id, descripcion, datosPendientes = {}) => {
             setArticuloId(id);
             setArticuloDescripcion(descripcion);
+            setDatosOrdenPendientes(datosPendientes);
           }}
         />
 

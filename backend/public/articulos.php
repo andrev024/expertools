@@ -13,17 +13,64 @@ $pdo = Database::getConnection();
 $metodo = $_SERVER['REQUEST_METHOD'];
 
 if ($metodo === 'POST') {
-    crearArticulo($pdo);
+    $datos = json_decode(file_get_contents('php://input'), true) ?: [];
+    if (($datos['operacion'] ?? '') === 'actualizar') {
+        actualizarArticulo($pdo, $datos);
+    } else {
+        crearArticulo($pdo, $datos);
+    }
 } elseif ($metodo === 'GET') {
     listarArticulos($pdo);
+} elseif ($metodo === 'PATCH') {
+    actualizarArticulo($pdo);
 } else {
     http_response_code(405);
     echo json_encode(['error' => 'Método no permitido']);
 }
 
-function crearArticulo(\PDO $pdo): void
+function actualizarArticulo(\PDO $pdo, ?array $datos = null): void
 {
-    $datos = json_decode(file_get_contents('php://input'), true);
+    $datos ??= json_decode(file_get_contents('php://input'), true) ?: [];
+    $articuloId = $datos['articulo_id'] ?? null;
+    $tipo = trim((string) ($datos['tipo'] ?? ''));
+    $marca = trim((string) ($datos['marca'] ?? ''));
+    $modelo = trim((string) ($datos['modelo'] ?? ''));
+    $serial = trim((string) ($datos['serial'] ?? ''));
+    $accesorios = is_array($datos['accesorios'] ?? null) ? $datos['accesorios'] : [];
+
+    if (!$articuloId || !$tipo) {
+        http_response_code(400);
+        echo json_encode(['error' => 'articulo_id y tipo son requeridos']);
+        return;
+    }
+
+    $pdo->beginTransaction();
+    try {
+        $stmt = $pdo->prepare('UPDATE articulo SET tipo = ?, marca = ?, modelo = ?, serial = ? WHERE id = ?');
+        $stmt->execute([$tipo, $marca ?: null, $modelo ?: null, $serial ?: null, $articuloId]);
+
+        $pdo->prepare('DELETE FROM accesorio WHERE articulo_id = ?')->execute([$articuloId]);
+        $stmtAccesorio = $pdo->prepare('INSERT INTO accesorio (articulo_id, nombre, descripcion) VALUES (?, ?, ?)');
+        foreach ($accesorios as $accesorio) {
+            $nombre = trim((string) ($accesorio['nombre'] ?? ''));
+            if ($nombre !== '') {
+                $stmtAccesorio->execute([$articuloId, $nombre, trim((string) ($accesorio['descripcion'] ?? '')) ?: null]);
+            }
+        }
+        $pdo->commit();
+    } catch (\Exception $e) {
+        $pdo->rollBack();
+        http_response_code(500);
+        echo json_encode(['error' => 'No se pudo actualizar el artículo']);
+        return;
+    }
+
+    echo json_encode(['id' => $articuloId, 'tipo' => $tipo, 'marca' => $marca, 'modelo' => $modelo, 'serial' => $serial]);
+}
+
+function crearArticulo(\PDO $pdo, ?array $datos = null): void
+{
+    $datos ??= json_decode(file_get_contents('php://input'), true) ?: [];
 
     $clienteId = $datos['cliente_id'] ?? null;
     $tipo = $datos['tipo'] ?? null;

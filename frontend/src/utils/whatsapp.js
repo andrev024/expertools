@@ -14,6 +14,7 @@ export function telefonoWhatsapp(telefono) {
   return soloDigitos.length === 10 && soloDigitos.startsWith('3') ? `57${soloDigitos}` : soloDigitos;
 }
 
+
 // Abre (o navega) una ventana ya creada hacia el link de wa.me con el mensaje dado.
 export function abrirWhatsapp(ventana, telefono, mensaje) {
   const url = `https://wa.me/${telefonoWhatsapp(telefono)}?text=${encodeURIComponent(mensaje)}`;

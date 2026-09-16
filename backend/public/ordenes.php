@@ -37,6 +37,8 @@ function crearOrden(\PDO $pdo, object $usuarioAuth): void
     $tipo = $datos['tipo'] ?? 'reparacion';
     $ordenOriginalId = $datos['orden_original_id'] ?? null;
     $ubicacion = trim((string) ($datos['ubicacion'] ?? ''));
+    $cliente = is_array($datos['cliente'] ?? null) ? $datos['cliente'] : null;
+    $articulo = is_array($datos['articulo'] ?? null) ? $datos['articulo'] : null;
 
     if (!$articuloId) {
         http_response_code(400);
@@ -49,6 +51,41 @@ function crearOrden(\PDO $pdo, object $usuarioAuth): void
     $pdo->beginTransaction();
 
     try {
+        if ($cliente && !empty($cliente['id'])) {
+            $stmtCliente = $pdo->prepare(
+                'UPDATE cliente SET nombre = ?, empresa = ?, correo = ?, telefono = ?, telefono_2 = ?, direccion = ?, cedula = ? WHERE id = ?'
+            );
+            $stmtCliente->execute([
+                trim((string) ($cliente['nombre'] ?? '')) ?: null,
+                trim((string) ($cliente['empresa'] ?? '')) ?: null,
+                trim((string) ($cliente['correo'] ?? '')) ?: null,
+                trim((string) ($cliente['telefono'] ?? '')) ?: null,
+                trim((string) ($cliente['telefono_2'] ?? '')) ?: null,
+                trim((string) ($cliente['direccion'] ?? '')) ?: null,
+                trim((string) ($cliente['cedula'] ?? '')) ?: null,
+                $cliente['id'],
+            ]);
+        }
+
+        if ($articulo && !empty($articulo['id'])) {
+            $stmtArticulo = $pdo->prepare('UPDATE articulo SET tipo = ?, marca = ?, modelo = ?, serial = ? WHERE id = ?');
+            $stmtArticulo->execute([
+                trim((string) ($articulo['tipo'] ?? '')),
+                trim((string) ($articulo['marca'] ?? '')) ?: null,
+                trim((string) ($articulo['modelo'] ?? '')) ?: null,
+                trim((string) ($articulo['serial'] ?? '')) ?: null,
+                $articulo['id'],
+            ]);
+            $pdo->prepare('DELETE FROM accesorio WHERE articulo_id = ?')->execute([$articulo['id']]);
+            $stmtAccesorio = $pdo->prepare('INSERT INTO accesorio (articulo_id, nombre, descripcion) VALUES (?, ?, ?)');
+            foreach (($articulo['accesorios'] ?? []) as $accesorio) {
+                $nombre = trim((string) ($accesorio['nombre'] ?? ''));
+                if ($nombre !== '') {
+                    $stmtAccesorio->execute([$articulo['id'], $nombre, trim((string) ($accesorio['descripcion'] ?? '')) ?: null]);
+                }
+            }
+        }
+
         // NOTA: se usan comillas simples para el texto 'recibido', no dobles.
         // Con comillas dobles, algunos proveedores (como Aiven, que activa
         // ANSI_QUOTES) las interpretan como nombre de columna en vez de texto.
@@ -105,7 +142,7 @@ function listarOrdenes(\PDO $pdo): void
                               FROM historial_estado h
                               WHERE h.orden_id = os.id AND h.comentario LIKE '%Ubicacion:%'
                               ORDER BY h.fecha DESC LIMIT 1), '') AS ubicacion,
-                    c.nombre AS cliente_nombre, c.empresa AS cliente_empresa, c.telefono AS cliente_telefono,
+                    c.nombre AS cliente_nombre, c.empresa AS cliente_empresa, c.telefono AS cliente_telefono, c.telefono_2 AS cliente_telefono_2,
                     c.correo AS cliente_correo, c.cedula AS cliente_cedula
              FROM orden_servicio os
              JOIN articulo a ON a.id = os.articulo_id
