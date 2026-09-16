@@ -249,16 +249,16 @@ button:not(.button-quiet):hover, .button-primary:hover { background: var(--accen
 .orders-table tbody tr:hover td:first-child { background: var(--accent-soft); }
 .orders-table tbody tr:nth-child(even) { background: #f8f9fa; }
 .orders-table tbody tr:hover { background: var(--accent-soft); }
-.clientes-resultados { table-layout: fixed; min-width: 480px; font-size: 13px; }
+.clientes-resultados { table-layout: fixed; min-width: 560px; font-size: 13px; }
 .clientes-resultados th, .clientes-resultados td { padding: 6px 8px; }
-.clientes-resultados th:nth-child(1), .clientes-resultados td:nth-child(1) { width: 170px; }
-.clientes-resultados th:nth-child(2), .clientes-resultados td:nth-child(2) { width: 150px; }
-.clientes-resultados th:nth-child(3), .clientes-resultados td:nth-child(3) { width: 140px; }
+.clientes-resultados th:nth-child(1), .clientes-resultados td:nth-child(1) { width: 160px; }
+.clientes-resultados th:nth-child(2), .clientes-resultados td:nth-child(2) { width: 140px; }
+.clientes-resultados th:nth-child(3), .clientes-resultados td:nth-child(3) { width: 130px; }
 .clientes-resultados th:nth-child(4), .clientes-resultados td:nth-child(4) { width: 130px; }
 .clientes-resultados td:nth-child(2) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.clientes-resultados td:last-child { white-space: nowrap; vertical-align: middle; }
-.clientes-resultados td:last-child button { min-width: 0; min-height: 0; width: auto; padding: 5px 10px; font-size: 12px; }
-.clientes-acciones { display: flex; gap: 4px; flex-wrap: nowrap; }
+.clientes-resultados td:last-child { white-space: normal; vertical-align: middle; }
+.clientes-resultados td:last-child button { min-width: 0; min-height: 0; width: 100%; padding: 5px 10px; font-size: 12px; white-space: nowrap; }
+.clientes-acciones { display: flex; flex-direction: column; align-items: stretch; gap: 4px; }
 .cliente-seleccionado-resumen { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-top: 10px; padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--accent-soft); }
 .cliente-seleccionado-resumen span { font-size: 14px; }
 .cliente-edicion-fila td { background: var(--accent-soft) !important; }
@@ -477,6 +477,8 @@ input:focus, select:focus, textarea:focus { outline: 0; border-color: var(--acce
   .user-management .orders-table td:last-child button { margin: 4px 0; }
   .clientes-resultados { min-width: 0; }
   .articulos-cliente { min-width: 0; }
+  .clientes-resultados td:last-child, .clientes-acciones { flex-direction: column; align-items: stretch; }
+  .clientes-resultados td:last-child button { width: 100%; }
   .clientes-paginacion { gap: 8px; font-size: 14px; }
   .cliente-edicion { grid-template-columns: 1fr; }
   .articulo-accesorio-edicion { grid-template-columns: 1fr; }
