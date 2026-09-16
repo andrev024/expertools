@@ -48,22 +48,8 @@ function eliminarCliente(\PDO $pdo): void
         return;
     }
 
-    // Si el cliente tiene articulos con ordenes de servicio, no se puede borrar:
-    // esas ordenes son historial de negocio y no deben perderse por accidente.
-    $ordenesStmt = $pdo->prepare(
-        'SELECT COUNT(*) FROM orden_servicio os
-         JOIN articulo a ON a.id = os.articulo_id
-         WHERE a.cliente_id = ?'
-    );
-    $ordenesStmt->execute([$clienteId]);
-    if ((int) $ordenesStmt->fetchColumn() > 0) {
-        http_response_code(409);
-        echo json_encode(['error' => 'No se puede eliminar: el cliente tiene órdenes de servicio registradas.']);
-        return;
-    }
-
-    // El cliente puede tener articulos sin ninguna orden asociada (p. ej. se
-    // registraron por error). Esos si se borran en cascada junto al cliente.
+    // Se borra en cascada TODO lo asociado al cliente: articulos, ordenes,
+    // historial y cotizaciones. Esto es irreversible (lo advierte el frontend).
     $pdo->beginTransaction();
     try {
         $articulosStmt = $pdo->prepare('SELECT id FROM articulo WHERE cliente_id = ?');
@@ -71,9 +57,35 @@ function eliminarCliente(\PDO $pdo): void
         $articuloIds = $articulosStmt->fetchAll(\PDO::FETCH_COLUMN);
 
         if ($articuloIds) {
-            $marcadores = implode(',', array_fill(0, count($articuloIds), '?'));
-            $pdo->prepare("DELETE FROM accesorio WHERE articulo_id IN ({$marcadores})")->execute($articuloIds);
-            $pdo->prepare("DELETE FROM articulo WHERE id IN ({$marcadores})")->execute($articuloIds);
+            $marcadoresArticulos = implode(',', array_fill(0, count($articuloIds), '?'));
+
+            $ordenesStmt = $pdo->prepare("SELECT id FROM orden_servicio WHERE articulo_id IN ({$marcadoresArticulos})");
+            $ordenesStmt->execute($articuloIds);
+            $ordenIds = $ordenesStmt->fetchAll(\PDO::FETCH_COLUMN);
+
+            if ($ordenIds) {
+                $marcadoresOrdenes = implode(',', array_fill(0, count($ordenIds), '?'));
+
+                // Ordenes de garantia que apuntan a una orden por borrar: se desvincula
+                // en vez de bloquear el borrado por la FK auto-referenciada.
+                $pdo->prepare("UPDATE orden_servicio SET orden_original_id = NULL WHERE orden_original_id IN ({$marcadoresOrdenes})")->execute($ordenIds);
+
+                $cotizacionesStmt = $pdo->prepare("SELECT id FROM cotizacion WHERE orden_id IN ({$marcadoresOrdenes})");
+                $cotizacionesStmt->execute($ordenIds);
+                $cotizacionIds = $cotizacionesStmt->fetchAll(\PDO::FETCH_COLUMN);
+
+                if ($cotizacionIds) {
+                    $marcadoresCotizaciones = implode(',', array_fill(0, count($cotizacionIds), '?'));
+                    $pdo->prepare("DELETE FROM cotizacion_detalle WHERE cotizacion_id IN ({$marcadoresCotizaciones})")->execute($cotizacionIds);
+                }
+
+                $pdo->prepare("DELETE FROM cotizacion WHERE orden_id IN ({$marcadoresOrdenes})")->execute($ordenIds);
+                $pdo->prepare("DELETE FROM historial_estado WHERE orden_id IN ({$marcadoresOrdenes})")->execute($ordenIds);
+                $pdo->prepare("DELETE FROM orden_servicio WHERE id IN ({$marcadoresOrdenes})")->execute($ordenIds);
+            }
+
+            $pdo->prepare("DELETE FROM accesorio WHERE articulo_id IN ({$marcadoresArticulos})")->execute($articuloIds);
+            $pdo->prepare("DELETE FROM articulo WHERE id IN ({$marcadoresArticulos})")->execute($articuloIds);
         }
 
         $stmt = $pdo->prepare('DELETE FROM cliente WHERE id = ?');
