@@ -79,7 +79,7 @@ function repuestoManoObraInicial(tipoArticulo) {
   return {
     referencia: 'Mano de obra',
     cantidad: 1,
-    montoUnitario: PRECIO_MANO_OBRA_POR_TIPO[tipoArticulo] ?? '',
+    montoUnitario: PRECIO_MANO_OBRA_POR_TIPO[tipoArticulo] ?? 1,
     descripcion: '',
   };
 }
