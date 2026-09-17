@@ -2,6 +2,12 @@
 // que se incluye en los mensajes de WhatsApp.
 export const FRONTEND_URL = 'https://expertools.vercel.app';
 
+// Formato "legacy" de Google Maps (maps.google.com/?q=...): a diferencia de
+// /maps/search/?api=1&query=..., este SÍ genera una miniatura de mapa en la
+// vista previa del link dentro de WhatsApp (funciona en Android e iPhone).
+export const ENLACE_UBICACION = 'https://maps.google.com/?q=ExperTools%20Reparaci%C3%B3n%20Mantenimiento%20y%20Venta%20de%20Herramientas%2C%20Bogot%C3%A1';
+export const ENLACE_INSTAGRAM = 'https://www.instagram.com/expertools_herramientas';
+
 // Arma el link publico de seguimiento para un código de orden dado.
 export function enlaceSeguimiento(codigoSeguimiento) {
   return `${FRONTEND_URL}/#/seguimiento?codigo=${encodeURIComponent(codigoSeguimiento || '')}`;

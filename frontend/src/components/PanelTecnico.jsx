@@ -4,7 +4,7 @@ import { formatearEstado } from '../utils/textoUI';
 import HistorialOrden from './HistorialOrden';
 import EditorRepuestos from './EditorRepuestos';
 import CambioEstadoAdmin from './CambioEstadoAdmin';
-import { abrirWhatsapp, enlaceSeguimiento } from '../utils/whatsapp';
+import { abrirWhatsapp, enlaceSeguimiento, ENLACE_UBICACION, ENLACE_INSTAGRAM } from '../utils/whatsapp';
 
 // Transiciones simples (via cambiar_estado.php) que no requieren formulario extra
 const TRANSICIONES_SIMPLES = {
@@ -231,25 +231,25 @@ function PanelTecnico() {
       });
       const enlace = enlaceSeguimiento(orden?.codigo_seguimiento);
       const mensaje = [
-        ` Hola ${orden?.cliente_nombre || 'cliente'}, te contactamos desde Expertools.`,
-        '** Cotización de servicio: **',
+        `👋 Hola ${orden?.cliente_nombre || 'cliente'}, te contactamos desde Expertools.`,
+        '📋 *Cotización de servicio:*',
         '',
-        ` Código: ${orden?.codigo_seguimiento || ordenId}`,
-        ` Artículo: ${orden?.articulo_tipo || ''}${orden?.marca ? ` ${orden.marca}` : ''}${orden?.modelo ? ` ${orden.modelo}` : ''}`,
-        ` Diagnóstico: ${form.dictamen}`,
-        ' Repuestos:',
+        `📦 Código: ${orden?.codigo_seguimiento || ordenId}`,
+        `🔧 Artículo: ${orden?.articulo_tipo || ''}${orden?.marca ? ` ${orden.marca}` : ''}${orden?.modelo ? ` ${orden.modelo}` : ''}`,
+        `🩺 Diagnóstico: ${form.dictamen}`,
+        '🔩 Repuestos:',
         ...(repuestos.length
           ? repuestos.map((repuesto) => `  - ${repuesto.referencia} (x${repuesto.cantidad})${repuesto.descripcion ? ` - ${repuesto.descripcion}` : ''}: $${(Number(repuesto.cantidad) * Number(repuesto.montoUnitario)).toLocaleString('es-CO')}`)
           : ['  - No requiere repuestos']),
-        ` Total: $${montoTotal.toLocaleString('es-CO')}`,
+        `💵 Total: $${montoTotal.toLocaleString('es-CO')}`,
         Number(form.abono || 0) > 0 ? `⚠️ Abono requerido: $${Number(form.abono).toLocaleString('es-CO')}` : '',
         '',
-        ' Por favor confírmanos por este medio si autorizas la reparación, recuerda que la reparacion no inicia si no se recibe el abono en caso de que lo requiera. ',
+        '🙏 Por favor confírmanos por este medio si autorizas la reparación, recuerda que la reparacion no inicia si no se recibe el abono en caso de que lo requiera.',
         '',
-        ` Sigue tu orden en tiempo real aquí: ${enlace}`,
+        `🔗 Sigue tu orden en tiempo real aquí: ${enlace}`,
         '',
-        'Instagram: https://www.instagram.com/expertools_herramientas',
-        'Ubicación: https://www.google.com/maps/search/?api=1&query=ExperTools%20Reparaci%C3%B3n%20Mantenimiento%20y%20Venta%20de%20Herramientas%2C%20Bogot%C3%A1',
+        `📸 Instagram: ${ENLACE_INSTAGRAM}`,
+        `📍 Ubicación: ${ENLACE_UBICACION}`,
       ].join('\n');
       abrirWhatsapp(ventanaWhatsapp, orden?.cliente_telefono, mensaje);
       cargarOrdenes();
