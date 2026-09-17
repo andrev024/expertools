@@ -198,8 +198,13 @@ function PanelTecnico() {
         cantidad: Number(repuesto.cantidad),
         montoUnitario: Number(repuesto.montoUnitario),
       }));
-    if (!form.dictamen?.trim() || repuestos.some((repuesto) => !repuesto.cantidad || !repuesto.montoUnitario)) {
-      setError('El dictamen y los datos completos de cada repuesto son requeridos');
+    if (!form.dictamen?.trim()) {
+      setError('El dictamen es requerido');
+      return;
+    }
+    const repuestoIncompleto = repuestos.find((repuesto) => !repuesto.cantidad || !repuesto.montoUnitario);
+    if (repuestoIncompleto) {
+      setError(`Falta cantidad y/o valor unitario en el repuesto "${repuestoIncompleto.referencia}"`);
       return;
     }
 
