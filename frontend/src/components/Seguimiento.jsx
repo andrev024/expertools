@@ -51,13 +51,13 @@ function Seguimiento({ embebido = false }) {
           <div className="col-12">
             <span className="eyebrow text-uppercase fw-semibold">Seguimiento en tiempo real</span>
             <h1 className="display-5 fw-semibold mt-2 mb-3">Seguimiento de tu reparación</h1>
-            <p className="page-lead text-secondary mb-4">Ingresa el código que te dieron en recepción para conocer el estado de tu artículo.</p>
+            <p className="page-lead text-secondary mb-4">Ingresa el código que te dieron en recepción para conocer el estado de tu artículo. Puedes escribirlo completo (OT-A-0600) o solo el número (0600).</p>
 
             <form onSubmit={buscarOrden} className="tracking-form input-group mb-4">
               <input
                 className="form-control"
                 type="text"
-                placeholder="Ej: OT-A-0600"
+                placeholder="Ej: OT-A-0600 o 0600"
                 value={codigo}
                 onChange={(e) => setCodigo(e.target.value)}
                 required

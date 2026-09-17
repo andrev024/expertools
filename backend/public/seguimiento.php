@@ -6,12 +6,20 @@ use App\Database;
 
 header('Content-Type: application/json; charset=utf-8');
 
-$codigo = $_GET['codigo'] ?? null;
+$codigo = trim($_GET['codigo'] ?? '');
 
 if (!$codigo) {
     http_response_code(400);
     echo json_encode(['error' => 'codigo es requerido']);
     exit;
+}
+
+// Permitimos que el cliente busque solo con el consecutivo (ej. "0600"),
+// sin tener que escribir el prefijo "OT-A-" completo.
+if (preg_match('/^\d+$/', $codigo)) {
+    $codigo = 'OT-A-' . str_pad($codigo, 4, '0', STR_PAD_LEFT);
+} else {
+    $codigo = strtoupper($codigo);
 }
 
 $pdo = Database::getConnection();
