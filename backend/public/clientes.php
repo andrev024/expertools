@@ -128,6 +128,13 @@ function actualizarCliente(\PDO $pdo, ?array $datos = null): void
         return;
     }
 
+    $duplicado = buscarClienteDuplicado($pdo, $correo, $telefono, $telefono2, $clienteId);
+    if ($duplicado) {
+        http_response_code(409);
+        echo json_encode(['error' => 'Ya existe otro cliente registrado con ese teléfono o correo.']);
+        return;
+    }
+
     $stmt = $pdo->prepare('UPDATE cliente SET nombre = ?, empresa = ?, correo = ?, telefono = ?, telefono_2 = ?, direccion = ?, cedula = ? WHERE id = ?');
     try {
         $stmt->execute([$nombre ?: null, $empresa ?: null, $correo ?: null, $telefono ?: null, $telefono2 ?: null, $direccion ?: null, $cedula ?: null, $clienteId]);
@@ -158,6 +165,13 @@ function crearCliente(\PDO $pdo, ?array $datos = null): void
         return;
     }
 
+    $duplicado = buscarClienteDuplicado($pdo, $correo, $telefono, $telefono2);
+    if ($duplicado) {
+        http_response_code(409);
+        echo json_encode(['error' => 'Ya existe otro cliente registrado con ese teléfono o correo.']);
+        return;
+    }
+
     $stmt = $pdo->prepare(
         'INSERT INTO cliente (nombre, empresa, correo, telefono, telefono_2, direccion, cedula) VALUES (?, ?, ?, ?, ?, ?, ?)'
     );
@@ -173,6 +187,45 @@ function crearCliente(\PDO $pdo, ?array $datos = null): void
         'telefono_2' => $telefono2,
         'direccion' => $direccion,
     ]);
+}
+
+// Revisa si ya existe otro cliente con el mismo correo o telefono (en cualquiera de los 2 campos de telefono).
+function buscarClienteDuplicado(\PDO $pdo, ?string $correo, ?string $telefono, ?string $telefono2, ?int $excluirClienteId = null): bool
+{
+    $correo = trim((string) $correo);
+    $telefono = trim((string) $telefono);
+    $telefono2 = trim((string) $telefono2);
+
+    $condiciones = [];
+    $parametros = [];
+
+    if ($correo !== '') {
+        $condiciones[] = 'correo = ?';
+        $parametros[] = $correo;
+    }
+    foreach ([$telefono, $telefono2] as $tel) {
+        if ($tel !== '') {
+            $condiciones[] = 'telefono = ?';
+            $parametros[] = $tel;
+            $condiciones[] = 'telefono_2 = ?';
+            $parametros[] = $tel;
+        }
+    }
+
+    if (!$condiciones) {
+        return false;
+    }
+
+    $sql = 'SELECT id FROM cliente WHERE (' . implode(' OR ', $condiciones) . ')';
+    if ($excluirClienteId !== null) {
+        $sql .= ' AND id != ?';
+        $parametros[] = $excluirClienteId;
+    }
+
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($parametros);
+
+    return (bool) $stmt->fetchColumn();
 }
 
 function listarClientes(\PDO $pdo): void

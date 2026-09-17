@@ -479,6 +479,11 @@ input:focus, select:focus, textarea:focus { outline: 0; border-color: var(--acce
   .articulos-cliente { min-width: 0; }
   .clientes-resultados td:last-child, .clientes-acciones { flex-direction: column; align-items: stretch; }
   .clientes-resultados td:last-child button { width: 100%; }
+  /* La celda de Acciones (Ver orden / Editar repuestos / Forzar estado) se apretaba en una fila
+     y el texto de los botones se partia letra por letra. Se apila en columna en mobile. */
+  .ordenes-tabla td:last-child { flex-direction: column; align-items: stretch; text-align: left; overflow-wrap: normal; gap: 8px; }
+  .ordenes-tabla td:last-child::before { flex: 0 0 auto; margin-bottom: 4px; }
+  .ordenes-tabla td:last-child .button, .ordenes-tabla td:last-child button { width: 100%; white-space: nowrap; }
   .clientes-paginacion { gap: 8px; font-size: 14px; }
   .cliente-edicion { grid-template-columns: 1fr; }
   .articulo-accesorio-edicion { grid-template-columns: 1fr; }
