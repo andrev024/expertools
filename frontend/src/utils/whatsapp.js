@@ -35,15 +35,17 @@ export function formatearAccesorios(accesorios) {
 export function abrirWhatsapp(ventana, telefono, mensaje) {
   const numero = telefonoWhatsapp(telefono);
   const texto = encodeURIComponent(mensaje);
-  // Se usa siempre web.whatsapp.com (en vez de wa.me) para los 3 sistemas operativos
-  // de escritorio (Windows, macOS, Linux): al ser una URL https normal, el navegador
-  // la carga directamente sin entregarle el texto a una app de escritorio registrada
-  // como manejador del protocolo (que en Windows corrompe los emojis al pasar el texto
-  // por la línea de comandos con el codepage local en vez de UTF-8). En celular, iOS y
-  // Android igual interceptan este dominio como "universal link" y abren la app nativa
-  // de WhatsApp sin pasar por ningún command-line, así que el comportamiento es el
-  // mismo en todos los dispositivos.
-  const url = `https://web.whatsapp.com/send?phone=${numero}&text=${texto}`;
+  // wa.me intenta abrir primero la app instalada (celular o escritorio) y si no
+  // detecta ninguna, cae a web.whatsapp.com — esto da la mejor experiencia (abre la
+  // app de escritorio directo), pero si el PC tiene instalado el WhatsApp Desktop
+  // "clasico" (instalador .exe viejo de whatsapp.com, no el de Microsoft Store), ese
+  // ejecutable tiene un bug conocido: decodifica el texto recibido por el protocolo
+  // whatsapp:// con el codepage local de Windows en vez de UTF-8, y corrompe TODOS
+  // los emojis del mensaje ya enviado. La solucion real es actualizar/reinstalar
+  // WhatsApp Desktop desde Microsoft Store (ese si soporta Unicode correctamente en
+  // la activacion por protocolo); no hay forma de arreglarlo desde este codigo porque
+  // el navegador no controla como el ejecutable externo interpreta el texto recibido.
+  const url = `https://wa.me/${numero}?text=${texto}`;
   if (ventana) {
     ventana.location.href = url;
   } else {
