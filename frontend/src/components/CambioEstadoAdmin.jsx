@@ -20,62 +20,62 @@ const ESTADOS_CON_MENSAJE = ['recibido', 'cotizado', 'listo_para_entregar'];
 
 function mensajeAvisoCreacion(orden) {
   return [
-    `👋 Hola ${orden.cliente_nombre || orden.cliente_empresa || 'cliente'}, te contactamos desde Expertools.`,
-    '🛠️ Registramos el ingreso de tu equipo para servicio técnico.',
+    `Hola ${orden.cliente_nombre || orden.cliente_empresa || 'cliente'}, te contactamos desde Expertools.`,
+    'Registramos el ingreso de tu equipo para servicio técnico.',
     '',
-    `📦 Código de seguimiento: ${orden.codigo_seguimiento}`,
-    `🗂️ Tipo de servicio: ${formatearTipoOrden(orden.tipo)}`,
-    `🔧 Artículo: ${orden.articulo_tipo}${orden.marca ? ` ${orden.marca}` : ''}${orden.modelo ? ` ${orden.modelo}` : ''}`,
-    orden.accesorios?.length ? `🎒 Accesorios recibidos:\n${formatearAccesorios(orden.accesorios)}` : '',
+    `- Código de seguimiento: ${orden.codigo_seguimiento}`,
+    `- Tipo de servicio: ${formatearTipoOrden(orden.tipo)}`,
+    `- Artículo: ${orden.articulo_tipo}${orden.marca ? ` ${orden.marca}` : ''}${orden.modelo ? ` ${orden.modelo}` : ''}`,
+    orden.accesorios?.length ? `- Accesorios recibidos:\n${formatearAccesorios(orden.accesorios)}` : '',
     '',
-    '⏳ Te avisaremos por este medio cuando tengamos el diagnóstico y la cotización.',
+    'Te avisaremos por este medio cuando tengamos el diagnóstico y la cotización.',
     '',
-    `🔗 Consulta el seguimiento de tu orden en cualquier momento aquí: ${enlaceSeguimiento(orden.codigo_seguimiento)}`,
+    `Consulta el seguimiento de tu orden en cualquier momento aquí: ${enlaceSeguimiento(orden.codigo_seguimiento)}`,
     '',
-    `📸 Instagram: ${ENLACE_INSTAGRAM}`,
-    `📍 Ubicación: ${ENLACE_UBICACION}`,
+    `Instagram: ${ENLACE_INSTAGRAM}`,
+    `Ubicación: ${ENLACE_UBICACION}`,
   ].filter(Boolean).join('\n');
 }
 
 function mensajeAvisoEntrega(orden) {
   return [
-    `👋 Hola ${orden.cliente_nombre || orden.cliente_empresa || 'cliente'}, te contactamos desde Expertools.`,
-    '✅ Tu equipo ya está listo para entregar.',
+    `Hola ${orden.cliente_nombre || orden.cliente_empresa || 'cliente'}, te contactamos desde Expertools.`,
+    'Tu equipo ya está listo para entregar.',
     '',
-    `📦 Código de seguimiento: ${orden.codigo_seguimiento}`,
-    `🔧 Artículo: ${orden.articulo_tipo}${orden.marca ? ` ${orden.marca}` : ''}${orden.modelo ? ` ${orden.modelo}` : ''}`,
+    `- Código de seguimiento: ${orden.codigo_seguimiento}`,
+    `- Artículo: ${orden.articulo_tipo}${orden.marca ? ` ${orden.marca}` : ''}${orden.modelo ? ` ${orden.modelo}` : ''}`,
     '',
-    '🙏 Gracias por confiar en ExperTools. Por favor, acércate a nuestras instalaciones para recoger tu equipo.',
+    'Gracias por confiar en ExperTools. Por favor, acércate a nuestras instalaciones para recoger tu equipo.',
     '',
-    `🔗 Consulta el seguimiento de tu orden aquí: ${enlaceSeguimiento(orden.codigo_seguimiento)}`,
+    `Consulta el seguimiento de tu orden aquí: ${enlaceSeguimiento(orden.codigo_seguimiento)}`,
     '',
-    `📸 Instagram: ${ENLACE_INSTAGRAM}`,
-    `📍 Ubicación: ${ENLACE_UBICACION}`,
+    `Instagram: ${ENLACE_INSTAGRAM}`,
+    `Ubicación: ${ENLACE_UBICACION}`,
   ].join('\n');
 }
 
 function mensajeCotizacion(orden, cotizacion) {
   const repuestos = Array.isArray(cotizacion.repuestos) ? cotizacion.repuestos : [];
   return [
-    `👋 Hola ${orden.cliente_nombre || orden.cliente_empresa || 'cliente'}, te contactamos desde Expertools.`,
-    '📋 *Cotización de servicio:*',
+    `Hola ${orden.cliente_nombre || orden.cliente_empresa || 'cliente'}, te contactamos desde Expertools.`,
+    '*Cotización de servicio:*',
     '',
-    `📦 Código: ${orden.codigo_seguimiento}`,
-    `🔧 Artículo: ${orden.articulo_tipo}${orden.marca ? ` ${orden.marca}` : ''}${orden.modelo ? ` ${orden.modelo}` : ''}`,
-    `🩺 Diagnóstico: ${cotizacion.dictamen || ''}`,
-    '🔩 Repuestos:',
+    `- Código: ${orden.codigo_seguimiento}`,
+    `- Artículo: ${orden.articulo_tipo}${orden.marca ? ` ${orden.marca}` : ''}${orden.modelo ? ` ${orden.modelo}` : ''}`,
+    `- Diagnóstico: ${cotizacion.dictamen || ''}`,
+    '- Repuestos:',
     ...(repuestos.length
       ? repuestos.map((repuesto) => `  - ${repuesto.referencia} (x${repuesto.cantidad})${repuesto.descripcion ? ` - ${repuesto.descripcion}` : ''}: $${(Number(repuesto.cantidad) * Number(repuesto.montoUnitario)).toLocaleString('es-CO')}`)
       : ['  - No requiere repuestos']),
-    `💵 Total: $${Number(cotizacion.monto || 0).toLocaleString('es-CO')}`,
-    Number(cotizacion.abono || 0) > 0 ? `⚠️ Abono requerido: $${Number(cotizacion.abono).toLocaleString('es-CO')}` : '',
+    `- Total: $${Number(cotizacion.monto || 0).toLocaleString('es-CO')}`,
+    Number(cotizacion.abono || 0) > 0 ? `- Abono requerido: $${Number(cotizacion.abono).toLocaleString('es-CO')}` : '',
     '',
-    '🙏 Por favor confírmanos por este medio si autorizas la reparación, recuerda que la reparacion no inicia si no se recibe el abono en caso de que lo requiera.',
+    'Por favor confírmanos por este medio si autorizas la reparación, recuerda que la reparacion no inicia si no se recibe el abono en caso de que lo requiera.',
     '',
-    `🔗 Sigue tu orden en tiempo real aquí: ${enlaceSeguimiento(orden.codigo_seguimiento)}`,
+    `Sigue tu orden en tiempo real aquí: ${enlaceSeguimiento(orden.codigo_seguimiento)}`,
     '',
-    `📸 Instagram: ${ENLACE_INSTAGRAM}`,
-    `📍 Ubicación: ${ENLACE_UBICACION}`,
+    `Instagram: ${ENLACE_INSTAGRAM}`,
+    `Ubicación: ${ENLACE_UBICACION}`,
   ].filter(Boolean).join('\n');
 }
 

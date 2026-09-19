@@ -144,18 +144,18 @@ function PanelRecepcion() {
 
   function abrirAvisoEntrega(orden) {
     const mensaje = [
-      `👋 Hola ${orden.cliente_nombre || orden.cliente_empresa || 'cliente'}, te contactamos desde Expertools.`,
-      '✅ Tu equipo ya está listo para entregar.',
+      `Hola ${orden.cliente_nombre || orden.cliente_empresa || 'cliente'}, te contactamos desde Expertools.`,
+      'Tu equipo ya está listo para entregar.',
       '',
-      `📦 Código de seguimiento: ${orden.codigo_seguimiento}`,
-      `🔧 Artículo: ${orden.articulo_tipo}${orden.marca ? ` ${orden.marca}` : ''}${orden.modelo ? ` ${orden.modelo}` : ''}`,
+      `- Código de seguimiento: ${orden.codigo_seguimiento}`,
+      `- Artículo: ${orden.articulo_tipo}${orden.marca ? ` ${orden.marca}` : ''}${orden.modelo ? ` ${orden.modelo}` : ''}`,
       '',
-      '🙏 Gracias por confiar en ExperTools. Por favor, acércate a nuestras instalaciones para recoger tu equipo.',
+      'Gracias por confiar en ExperTools. Por favor, acércate a nuestras instalaciones para recoger tu equipo.',
       '',
-      `🔗 Consulta el seguimiento de tu orden aquí: ${enlaceSeguimiento(orden.codigo_seguimiento)}`,
+      `Consulta el seguimiento de tu orden aquí: ${enlaceSeguimiento(orden.codigo_seguimiento)}`,
       '',
-      `📸 Instagram: ${ENLACE_INSTAGRAM}`,
-      `📍 Ubicación: ${ENLACE_UBICACION}`,
+      `Instagram: ${ENLACE_INSTAGRAM}`,
+      `Ubicación: ${ENLACE_UBICACION}`,
     ].join('\n');
 
     abrirWhatsapp(window.open('', '_blank'), orden.cliente_telefono, mensaje);
@@ -165,20 +165,20 @@ function PanelRecepcion() {
   // información de recepción y el link para hacerle seguimiento.
   function abrirAvisoCreacion(orden, ventanaWhatsapp) {
     const mensaje = [
-      `👋 Hola ${orden.cliente_nombre || orden.cliente_empresa || 'cliente'}, te contactamos desde Expertools.`,
-      '🛠️ Registramos el ingreso de tu equipo para servicio técnico.',
+      `Hola ${orden.cliente_nombre || orden.cliente_empresa || 'cliente'}, te contactamos desde Expertools.`,
+      'Registramos el ingreso de tu equipo para servicio técnico.',
       '',
-      `📦 Código de seguimiento: ${orden.codigo_seguimiento}`,
-      `🗂️ Tipo de servicio: ${formatearTipoOrden(orden.tipo)}`,
-      `🔧 Artículo: ${orden.articulo_tipo}${orden.marca ? ` ${orden.marca}` : ''}${orden.modelo ? ` ${orden.modelo}` : ''}`,
-      orden.accesorios?.length ? `🎒 Accesorios recibidos:\n${formatearAccesorios(orden.accesorios)}` : '',
+      `- Código de seguimiento: ${orden.codigo_seguimiento}`,
+      `- Tipo de servicio: ${formatearTipoOrden(orden.tipo)}`,
+      `- Artículo: ${orden.articulo_tipo}${orden.marca ? ` ${orden.marca}` : ''}${orden.modelo ? ` ${orden.modelo}` : ''}`,
+      orden.accesorios?.length ? `- Accesorios recibidos:\n${formatearAccesorios(orden.accesorios)}` : '',
       '',
-      '⏳ Te avisaremos por este medio cuando tengamos el diagnóstico y la cotización.',
+      'Te avisaremos por este medio cuando tengamos el diagnóstico y la cotización.',
       '',
-      `🔗 Consulta el seguimiento de tu orden en cualquier momento aquí: ${enlaceSeguimiento(orden.codigo_seguimiento)}`,
+      `Consulta el seguimiento de tu orden en cualquier momento aquí: ${enlaceSeguimiento(orden.codigo_seguimiento)}`,
       '',
-      `📸 Instagram: ${ENLACE_INSTAGRAM}`,
-      `📍 Ubicación: ${ENLACE_UBICACION}`,
+      `Instagram: ${ENLACE_INSTAGRAM}`,
+      `Ubicación: ${ENLACE_UBICACION}`,
     ].filter(Boolean).join('\n');
 
     abrirWhatsapp(ventanaWhatsapp, orden.cliente_telefono, mensaje);
