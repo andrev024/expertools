@@ -5,7 +5,7 @@ import HistorialOrden from './HistorialOrden';
 import EditorRepuestos from './EditorRepuestos';
 import CambioEstadoAdmin from './CambioEstadoAdmin';
 import { formatearEstado, formatearTipoOrden, normalizarEstado } from '../utils/textoUI';
-import { abrirWhatsapp, enlaceSeguimiento, ENLACE_UBICACION, ENLACE_INSTAGRAM } from '../utils/whatsapp';
+import { abrirWhatsapp, enlaceSeguimiento, ENLACE_UBICACION, ENLACE_INSTAGRAM, formatearAccesorios } from '../utils/whatsapp';
 
 function antiguedadEstado(fecha) {
   if (!fecha) return null;
@@ -33,15 +33,6 @@ function parsearFechaBogota(fecha) {
   const tieneZonaHoraria = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(valor);
   const fechaNormalizada = valor.includes('T') ? valor : valor.replace(' ', 'T');
   return new Date(tieneZonaHoraria ? fechaNormalizada : `${fechaNormalizada}-05:00`);
-}
-
-function formatearAccesorios(accesorios) {
-  if (Array.isArray(accesorios)) {
-    return accesorios
-      .map((accesorio) => `- ${accesorio.nombre}${accesorio.descripcion ? `: ${accesorio.descripcion}` : ''}`)
-      .join('\n');
-  }
-  return accesorios || '';
 }
 
 function fechaEstado(orden) {
@@ -454,7 +445,7 @@ function PanelRecepcion() {
               </button>
             ))}
             <EditorRepuestos ordenId={orden.id} onGuardado={cargarOrdenes} />
-            <CambioEstadoAdmin ordenId={orden.id} estadoActual={orden.estado_actual} onCambiado={cargarOrdenes} />
+            <CambioEstadoAdmin orden={orden} onCambiado={cargarOrdenes} />
             <HistorialOrden ordenId={orden.id} />
           </div>
         ))}
@@ -621,7 +612,7 @@ function PanelRecepcion() {
                   <td data-label="Acciones">
                     <HistorialOrden ordenId={orden.id} compacto />
                     <EditorRepuestos ordenId={orden.id} onGuardado={cargarOrdenes} />
-                    <CambioEstadoAdmin ordenId={orden.id} estadoActual={orden.estado_actual} onCambiado={cargarOrdenes} />
+                    <CambioEstadoAdmin orden={orden} onCambiado={cargarOrdenes} />
                   </td>
                 </tr>
               ))}

@@ -21,9 +21,29 @@ export function telefonoWhatsapp(telefono) {
 }
 
 
-// Abre (o navega) una ventana ya creada hacia el link de wa.me con el mensaje dado.
+// Formatea la lista de accesorios de un artículo para incluirla en un mensaje de WhatsApp.
+export function formatearAccesorios(accesorios) {
+  if (Array.isArray(accesorios)) {
+    return accesorios
+      .map((accesorio) => `- ${accesorio.nombre}${accesorio.descripcion ? `: ${accesorio.descripcion}` : ''}`)
+      .join('\n');
+  }
+  return accesorios || '';
+}
+
+// Abre (o navega) una ventana ya creada hacia WhatsApp con el mensaje dado.
 export function abrirWhatsapp(ventana, telefono, mensaje) {
-  const url = `https://wa.me/${telefonoWhatsapp(telefono)}?text=${encodeURIComponent(mensaje)}`;
+  const numero = telefonoWhatsapp(telefono);
+  const texto = encodeURIComponent(mensaje);
+  // Se usa siempre web.whatsapp.com (en vez de wa.me) para los 3 sistemas operativos
+  // de escritorio (Windows, macOS, Linux): al ser una URL https normal, el navegador
+  // la carga directamente sin entregarle el texto a una app de escritorio registrada
+  // como manejador del protocolo (que en Windows corrompe los emojis al pasar el texto
+  // por la línea de comandos con el codepage local en vez de UTF-8). En celular, iOS y
+  // Android igual interceptan este dominio como "universal link" y abren la app nativa
+  // de WhatsApp sin pasar por ningún command-line, así que el comportamiento es el
+  // mismo en todos los dispositivos.
+  const url = `https://web.whatsapp.com/send?phone=${numero}&text=${texto}`;
   if (ventana) {
     ventana.location.href = url;
   } else {

@@ -450,7 +450,7 @@ function PanelTecnico() {
           {ESTADOS_CON_COTIZACION.includes(orden.estado_actual) && (
             <EditorRepuestos ordenId={orden.id} onGuardado={cargarOrdenes} />
           )}
-          <CambioEstadoAdmin ordenId={orden.id} estadoActual={orden.estado_actual} onCambiado={cargarOrdenes} />
+          <CambioEstadoAdmin orden={orden} onCambiado={cargarOrdenes} />
           <HistorialOrden ordenId={orden.id} />
         </div>
       ))}
