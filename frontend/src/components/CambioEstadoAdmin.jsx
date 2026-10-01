@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useAuth } from '../context/authContextValue';
 import { apiFetch } from '../api';
 import { formatearEstado, formatearTipoOrden } from '../utils/textoUI';
-import { abrirWhatsapp, enlaceSeguimiento, ENLACE_UBICACION, ENLACE_INSTAGRAM, formatearAccesorios } from '../utils/whatsapp';
+import { abrirWhatsapp, textoSeguimiento, ENLACE_UBICACION, ENLACE_INSTAGRAM, formatearAccesorios } from '../utils/whatsapp';
 
 // Lista completa de estados del flujo, para que el admin pueda corregir
 // una orden que quedó en el estado equivocado sin seguir la secuencia normal.
@@ -30,7 +30,7 @@ function mensajeAvisoCreacion(orden) {
     '',
     'Te avisaremos por este medio cuando tengamos el diagnóstico y la cotización.',
     '',
-    `Consulta el seguimiento de tu orden en cualquier momento aquí: ${enlaceSeguimiento(orden.codigo_seguimiento)}`,
+    textoSeguimiento(orden.codigo_seguimiento),
     '',
     `Instagram: ${ENLACE_INSTAGRAM}`,
     `Ubicación: ${ENLACE_UBICACION}`,
@@ -47,7 +47,7 @@ function mensajeAvisoEntrega(orden) {
     '',
     'Gracias por confiar en ExperTools. Por favor, acércate a nuestras instalaciones para recoger tu equipo.',
     '',
-    `Consulta el seguimiento de tu orden aquí: ${enlaceSeguimiento(orden.codigo_seguimiento)}`,
+    textoSeguimiento(orden.codigo_seguimiento),
     '',
     `Instagram: ${ENLACE_INSTAGRAM}`,
     `Ubicación: ${ENLACE_UBICACION}`,
@@ -72,7 +72,7 @@ function mensajeCotizacion(orden, cotizacion) {
     '',
     'Por favor confírmanos por este medio si autorizas la reparación, recuerda que la reparacion no inicia si no se recibe el abono en caso de que lo requiera.',
     '',
-    `Sigue tu orden en tiempo real aquí: ${enlaceSeguimiento(orden.codigo_seguimiento)}`,
+    textoSeguimiento(orden.codigo_seguimiento),
     '',
     `Instagram: ${ENLACE_INSTAGRAM}`,
     `Ubicación: ${ENLACE_UBICACION}`,

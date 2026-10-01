@@ -13,6 +13,15 @@ export function enlaceSeguimiento(codigoSeguimiento) {
   return `${FRONTEND_URL}/#/seguimiento?codigo=${encodeURIComponent(codigoSeguimiento || '')}`;
 }
 
+// Dominio público mostrado al cliente en los mensajes de WhatsApp (sitio institucional).
+export const SITIO_WEB = 'https://expertools.com.co';
+
+// Texto para que el cliente consulte el estado de su orden en el sitio web,
+// indicando el número de orden (en vez de un link directo con el código).
+export function textoSeguimiento(codigoSeguimiento) {
+  return `Consulta el estado de tu orden en ${SITIO_WEB}, con el número de orden: ${codigoSeguimiento}`;
+}
+
 // Normaliza un teléfono colombiano de 10 dígitos (celular) al formato
 // internacional que espera wa.me (57XXXXXXXXXX). Si no aplica, lo deja igual.
 export function telefonoWhatsapp(telefono) {

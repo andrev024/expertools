@@ -6,7 +6,7 @@ import EditorRepuestos from './EditorRepuestos';
 import CambioEstadoAdmin from './CambioEstadoAdmin';
 import OrdenAcordeon from './OrdenAcordeon';
 import MenuAcciones from './MenuAcciones';
-import { abrirWhatsapp, enlaceSeguimiento, ENLACE_UBICACION, ENLACE_INSTAGRAM } from '../utils/whatsapp';
+import { abrirWhatsapp, textoSeguimiento, ENLACE_UBICACION, ENLACE_INSTAGRAM } from '../utils/whatsapp';
 import { descargarFacturaOrden } from '../utils/pdf';
 
 // Transiciones simples (via cambiar_estado.php) que no requieren formulario extra
@@ -238,7 +238,6 @@ function PanelTecnico() {
         const cotizacion = { dictamen: form.dictamen, repuestos, monto: montoTotal, abono: Number(form.abono || 0) };
         await descargarFacturaOrden({ orden, cotizacion, sufijo: 'cotizacion' });
       }
-      const enlace = enlaceSeguimiento(orden?.codigo_seguimiento);
       const mensaje = [
         `Hola ${orden?.cliente_nombre || 'cliente'}, te contactamos desde Expertools.`,
         '*Cotización de servicio:*',
@@ -255,7 +254,7 @@ function PanelTecnico() {
         '',
         'Por favor confírmanos por este medio si autorizas la reparación, recuerda que la reparacion no inicia si no se recibe el abono en caso de que lo requiera.',
         '',
-        `Sigue tu orden en tiempo real aquí: ${enlace}`,
+        textoSeguimiento(orden?.codigo_seguimiento),
         '',
         `Instagram: ${ENLACE_INSTAGRAM}`,
         `Ubicación: ${ENLACE_UBICACION}`,
@@ -288,7 +287,7 @@ function PanelTecnico() {
             'Confirmamos que autorizaste la reparación. Ya estamos trabajando en tu equipo.',
             '',
             `- Código: ${orden.codigo_seguimiento}`,
-            `Sigue tu orden en tiempo real aquí: ${enlaceSeguimiento(orden.codigo_seguimiento)}`,
+            textoSeguimiento(orden.codigo_seguimiento),
           ].join('\n');
           abrirWhatsapp(ventanaWhatsapp, orden.cliente_telefono, mensaje);
         }

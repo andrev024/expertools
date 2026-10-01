@@ -7,7 +7,7 @@ import CambioEstadoAdmin from './CambioEstadoAdmin';
 import OrdenAcordeon from './OrdenAcordeon';
 import MenuAcciones from './MenuAcciones';
 import { formatearEstado, formatearTipoOrden, normalizarEstado } from '../utils/textoUI';
-import { abrirWhatsapp, enlaceSeguimiento, ENLACE_UBICACION, ENLACE_INSTAGRAM, formatearAccesorios } from '../utils/whatsapp';
+import { abrirWhatsapp, textoSeguimiento, ENLACE_UBICACION, ENLACE_INSTAGRAM, formatearAccesorios } from '../utils/whatsapp';
 import { descargarFacturaOrden, obtenerCotizacionOrden } from '../utils/pdf';
 
 function antiguedadEstado(fecha) {
@@ -160,7 +160,7 @@ function PanelRecepcion() {
       '',
       'Gracias por confiar en ExperTools. Por favor, acércate a nuestras instalaciones para recoger tu equipo.',
       '',
-      `Consulta el seguimiento de tu orden aquí: ${enlaceSeguimiento(orden.codigo_seguimiento)}`,
+      textoSeguimiento(orden.codigo_seguimiento),
       '',
       `Instagram: ${ENLACE_INSTAGRAM}`,
       `Ubicación: ${ENLACE_UBICACION}`,
@@ -183,7 +183,7 @@ function PanelRecepcion() {
       '',
       'Te avisaremos por este medio cuando tengamos el diagnóstico y la cotización.',
       '',
-      `Consulta el seguimiento de tu orden en cualquier momento aquí: ${enlaceSeguimiento(orden.codigo_seguimiento)}`,
+      textoSeguimiento(orden.codigo_seguimiento),
       '',
       `Instagram: ${ENLACE_INSTAGRAM}`,
       `Ubicación: ${ENLACE_UBICACION}`,
@@ -257,7 +257,7 @@ function PanelRecepcion() {
             'Confirmamos que autorizaste la reparación. Ya estamos trabajando en tu equipo.',
             '',
             `- Código: ${orden.codigo_seguimiento}`,
-            `Sigue tu orden en tiempo real aquí: ${enlaceSeguimiento(orden.codigo_seguimiento)}`,
+            textoSeguimiento(orden.codigo_seguimiento),
           ].join('\n');
           abrirWhatsapp(ventanaWhatsapp, orden.cliente_telefono, mensaje);
         }
