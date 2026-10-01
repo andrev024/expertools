@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/authContextValue';
 import Seguimiento from './Seguimiento';
+import Footer from './Footer';
 
 function Login() {
   const [email, setEmail] = useState('');
@@ -67,6 +68,7 @@ function Login() {
           <Seguimiento embebido />
         </div>
       </section>
+      <Footer />
     </div>
   );
 }

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { apiFetch } from '../api';
 import { formatearEstado } from '../utils/textoUI';
+import Footer from './Footer';
 
 function Seguimiento({ embebido = false }) {
   const [searchParams] = useSearchParams();
@@ -132,6 +133,7 @@ function Seguimiento({ embebido = false }) {
           </div>
         </div>
       </main>
+      {!embebido && <Footer />}
     </div>
   );
 }

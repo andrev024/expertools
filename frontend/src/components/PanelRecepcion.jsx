@@ -4,8 +4,11 @@ import ClienteArticuloPicker from './ClienteArticuloPicker';
 import HistorialOrden from './HistorialOrden';
 import EditorRepuestos from './EditorRepuestos';
 import CambioEstadoAdmin from './CambioEstadoAdmin';
+import OrdenAcordeon from './OrdenAcordeon';
+import MenuAcciones from './MenuAcciones';
 import { formatearEstado, formatearTipoOrden, normalizarEstado } from '../utils/textoUI';
 import { abrirWhatsapp, enlaceSeguimiento, ENLACE_UBICACION, ENLACE_INSTAGRAM, formatearAccesorios } from '../utils/whatsapp';
+import { descargarFacturaOrden, obtenerCotizacionOrden } from '../utils/pdf';
 
 function antiguedadEstado(fecha) {
   if (!fecha) return null;
@@ -125,6 +128,11 @@ function PanelRecepcion() {
   const [ordenCodigo, setOrdenCodigo] = useState('desc');
   const [editandoUbicacion, setEditandoUbicacion] = useState(null);
   const [ubicaciones, setUbicaciones] = useState({});
+  const [paginaOrdenes, setPaginaOrdenes] = useState(1);
+  const [ordenExpandidaCotizacion, setOrdenExpandidaCotizacion] = useState(null);
+  const [filtroEstadoCotizacion, setFiltroEstadoCotizacion] = useState('todos');
+  const [ordenExpandidaAccion, setOrdenExpandidaAccion] = useState(null);
+  const [filtroEstadoAccion, setFiltroEstadoAccion] = useState('todos');
 
   async function cargarOrdenes() {
     try {
@@ -142,7 +150,7 @@ function PanelRecepcion() {
     return () => clearTimeout(temporizador);
   }, []);
 
-  function abrirAvisoEntrega(orden) {
+  function abrirAvisoEntrega(orden, ventanaWhatsapp) {
     const mensaje = [
       `Hola ${orden.cliente_nombre || orden.cliente_empresa || 'cliente'}, te contactamos desde Expertools.`,
       'Tu equipo ya está listo para entregar.',
@@ -158,7 +166,7 @@ function PanelRecepcion() {
       `Ubicación: ${ENLACE_UBICACION}`,
     ].join('\n');
 
-    abrirWhatsapp(window.open('', '_blank'), orden.cliente_telefono, mensaje);
+    abrirWhatsapp(ventanaWhatsapp, orden.cliente_telefono, mensaje);
   }
 
   // Al crear la orden, el cliente recibe de inmediato un WhatsApp con la
@@ -186,6 +194,8 @@ function PanelRecepcion() {
 
   async function cambiarEstado(ordenId, nuevoEstado) {
     setError('');
+    // La ventana se abre antes del await para que el navegador no bloquee el popup.
+    const ventanaWhatsapp = nuevoEstado === 'listo_para_entregar' ? window.open('', '_blank') : null;
     try {
       await apiFetch('cambiar_estado.php', {
         method: 'POST',
@@ -197,10 +207,15 @@ function PanelRecepcion() {
       });
       if (nuevoEstado === 'listo_para_entregar') {
         const orden = ordenes.find((item) => item.id === ordenId);
-        if (orden) abrirAvisoEntrega(orden);
+        if (orden) {
+          abrirAvisoEntrega(orden, ventanaWhatsapp);
+        } else if (ventanaWhatsapp) {
+          ventanaWhatsapp.close();
+        }
       }
       cargarOrdenes();
     } catch (err) {
+      if (ventanaWhatsapp) ventanaWhatsapp.close();
       setError(err.message);
     }
   }
@@ -223,6 +238,9 @@ function PanelRecepcion() {
 
   async function responderCotizacion(ordenId, respuesta) {
     setError('');
+    const orden = ordenes.find((item) => item.id === ordenId);
+    // La ventana se abre antes del await para que el navegador no bloquee el popup.
+    const ventanaWhatsapp = respuesta === 'aprobada' ? window.open('', '_blank') : null;
     try {
       await apiFetch('cotizacion.php', {
         method: 'PATCH',
@@ -232,7 +250,33 @@ function PanelRecepcion() {
           comentario: comentarios[ordenId] || '',
         }),
       });
+      if (respuesta === 'aprobada' && orden) {
+        if (ventanaWhatsapp) {
+          const mensaje = [
+            `Hola ${orden.cliente_nombre || orden.cliente_empresa || 'cliente'}, te contactamos desde Expertools.`,
+            'Confirmamos que autorizaste la reparación. Ya estamos trabajando en tu equipo.',
+            '',
+            `- Código: ${orden.codigo_seguimiento}`,
+            `Sigue tu orden en tiempo real aquí: ${enlaceSeguimiento(orden.codigo_seguimiento)}`,
+          ].join('\n');
+          abrirWhatsapp(ventanaWhatsapp, orden.cliente_telefono, mensaje);
+        }
+      } else if (ventanaWhatsapp) {
+        ventanaWhatsapp.close();
+      }
       cargarOrdenes();
+    } catch (err) {
+      if (ventanaWhatsapp) ventanaWhatsapp.close();
+      setError(err.message);
+    }
+  }
+
+  // Regenera la factura de una orden en su estado actual (con cotización si ya existe).
+  async function generarPdfOrden(orden) {
+    setError('');
+    try {
+      const cotizacion = await obtenerCotizacionOrden(orden.id);
+      await descargarFacturaOrden({ orden, cotizacion, sufijo: 'factura' });
     } catch (err) {
       setError(err.message);
     }
@@ -271,6 +315,8 @@ function PanelRecepcion() {
       const ordenCreada = listaActualizada.find((o) => String(o.id) === String(resultado.id));
       if (ordenCreada) {
         abrirAvisoCreacion(ordenCreada, ventanaWhatsapp);
+        // Primera factura: datos de ingreso, aún sin cotización.
+        descargarFacturaOrden({ orden: ordenCreada, sufijo: 'ingreso' }).catch(() => {});
       } else if (ventanaWhatsapp) {
         ventanaWhatsapp.close();
       }
@@ -306,6 +352,7 @@ function PanelRecepcion() {
     setFiltroEstado('todos');
     setFiltroTipo('todos');
     setFiltroUbicacion('todas');
+    setPaginaOrdenes(1);
   }
 
   const ordenesTabla = ordenes
@@ -327,6 +374,14 @@ function PanelRecepcion() {
       }
       return 0;
     });
+
+  const ORDENES_POR_PAGINA = 10;
+  const totalPaginasOrdenes = Math.max(1, Math.ceil(ordenesTabla.length / ORDENES_POR_PAGINA));
+  const paginaOrdenesSegura = Math.min(paginaOrdenes, totalPaginasOrdenes);
+  const ordenesVisibles = ordenesTabla.slice(
+    (paginaOrdenesSegura - 1) * ORDENES_POR_PAGINA,
+    paginaOrdenesSegura * ORDENES_POR_PAGINA
+  );
 
   return (
     <div className="operations-panel">
@@ -373,82 +428,135 @@ function PanelRecepcion() {
       {error && <p className="alert alert-danger">{error}</p>}
 
       <h2 className="h4 border-start border-4 ps-3">Cotizaciones por confirmar</h2>
-      {ordenes.filter((orden) => ['cotizado', 'esperando_respuesta'].includes(orden.estado_actual)).map((orden) => (
-        <div key={`cotizacion-${orden.id}`} className="order-card card shadow-sm rounded-3 border-0">
-          <div className="order-card-header">
-            <div>
-              <span className="order-kicker">Respuesta del cliente</span>
-              <h3 className="h5">{orden.codigo_seguimiento}</h3>
-            </div>
-            <strong className="status-badge">{formatearEstado(orden.estado_actual)}</strong>
-          </div>
-          {antiguedadEstado(orden.fecha_ingreso)?.dias >= 7 && (
-            <p className={`alert antiguedad-aviso py-2 mb-2 ${antiguedadEstado(orden.fecha_ingreso).clase}`}>
-              Orden ingresada hace {antiguedadEstado(orden.fecha_ingreso).dias} días
-            </p>
-          )}
-          <p className="order-meta">{orden.cliente_nombre || orden.cliente_empresa || 'Cliente sin nombre'} · {orden.articulo_tipo} {orden.marca || ''}</p>
-          <input
-            type="text"
-            placeholder="Nota de la respuesta (opcional)"
-            value={comentarios[orden.id] || ''}
-            onChange={(e) => setComentarios({ ...comentarios, [orden.id]: e.target.value })}
-            style={{ display: 'block', marginBottom: '8px', width: '100%' }}
-          />
-          <button className="button button-primary btn btn-primary me-2" onClick={() => responderCotizacion(orden.id, 'aprobada')}>Cliente aprobó</button>
-          <button className="button button-danger btn btn-outline-danger" onClick={() => responderCotizacion(orden.id, 'rechazada')}>Cliente no aprobó</button>
-        </div>
-      ))}
+      {(() => {
+        const ordenesCotizacion = ordenes.filter((orden) => ['cotizado', 'esperando_respuesta'].includes(orden.estado_actual));
+        const estadosCotizacion = ['cotizado', 'esperando_respuesta'].filter((estado) => ordenesCotizacion.some((orden) => orden.estado_actual === estado));
+        const ordenesCotizacionFiltradas = ordenesCotizacion.filter((orden) => filtroEstadoCotizacion === 'todos' || orden.estado_actual === filtroEstadoCotizacion);
+        return (
+          <>
+            {estadosCotizacion.length > 0 && (
+              <div className="tabs-filtro-estado" role="tablist" aria-label="Filtrar cotizaciones por estado">
+                <button type="button" className={`resumen-chip resumen-chip-button ${filtroEstadoCotizacion === 'todos' ? 'activo' : ''}`} onClick={() => setFiltroEstadoCotizacion('todos')}>
+                  Todas
+                </button>
+                {estadosCotizacion.map((estado) => (
+                  <button type="button" key={estado} className={`resumen-chip resumen-chip-button ${filtroEstadoCotizacion === estado ? 'activo' : ''}`} onClick={() => setFiltroEstadoCotizacion(estado)}>
+                    {formatearEstado(estado)}
+                  </button>
+                ))}
+              </div>
+            )}
+            {ordenesCotizacion.length === 0 && <p className="alert alert-light border">No hay cotizaciones pendientes por confirmar.</p>}
+            {ordenesCotizacion.length > 0 && ordenesCotizacionFiltradas.length === 0 && <p className="alert alert-light border">Ninguna coincide con el filtro seleccionado.</p>}
+            {ordenesCotizacionFiltradas.map((orden) => (
+              <OrdenAcordeon
+                key={`cotizacion-${orden.id}`}
+                orden={orden}
+                kicker="Respuesta del cliente"
+                expandido={ordenExpandidaCotizacion === orden.id}
+                onToggle={() => setOrdenExpandidaCotizacion((actual) => (actual === orden.id ? null : orden.id))}
+              >
+                {antiguedadEstado(orden.fecha_ingreso)?.dias >= 7 && (
+                  <p className={`alert antiguedad-aviso py-2 mb-2 ${antiguedadEstado(orden.fecha_ingreso).clase}`}>
+                    Orden ingresada hace {antiguedadEstado(orden.fecha_ingreso).dias} días
+                  </p>
+                )}
+                <input
+                  type="text"
+                  placeholder="Nota de la respuesta (opcional)"
+                  value={comentarios[orden.id] || ''}
+                  onChange={(e) => setComentarios({ ...comentarios, [orden.id]: e.target.value })}
+                  style={{ display: 'block', marginBottom: '8px', width: '100%' }}
+                />
+                <div className="acciones-principales">
+                  <button className="button button-primary btn btn-primary" onClick={() => responderCotizacion(orden.id, 'aprobada')}>Cliente aprobó</button>
+                  <button className="button button-danger btn btn-outline-danger" onClick={() => responderCotizacion(orden.id, 'rechazada')}>Cliente no aprobó</button>
+                </div>
+                <HistorialOrden ordenId={orden.id} />
+              </OrdenAcordeon>
+            ))}
+          </>
+        );
+      })()}
 
       <h2 className="h4 border-start border-4 ps-3">Acciones pendientes </h2>
-      {ordenes
-        .filter((o) => ACCIONES_RECEPCION[o.estado_actual])
-        .map((orden) => (
-          <div key={orden.id} className="order-card card shadow-sm rounded-3 border-0">
-            <div className="order-card-header">
-              <div>
-                <span className="order-kicker">Orden pendiente</span>
-                <h3 className="h5">{orden.codigo_seguimiento}</h3>
+      {(() => {
+        const ordenesAccion = ordenes.filter((o) => ACCIONES_RECEPCION[o.estado_actual]);
+        const estadosAccion = Object.keys(ACCIONES_RECEPCION).filter((estado) => ordenesAccion.some((orden) => orden.estado_actual === estado));
+        const ordenesAccionFiltradas = ordenesAccion.filter((orden) => filtroEstadoAccion === 'todos' || orden.estado_actual === filtroEstadoAccion);
+        return (
+          <>
+            {estadosAccion.length > 0 && (
+              <div className="tabs-filtro-estado" role="tablist" aria-label="Filtrar acciones pendientes por estado">
+                <button type="button" className={`resumen-chip resumen-chip-button ${filtroEstadoAccion === 'todos' ? 'activo' : ''}`} onClick={() => setFiltroEstadoAccion('todos')}>
+                  Todas
+                </button>
+                {estadosAccion.map((estado) => (
+                  <button type="button" key={estado} className={`resumen-chip resumen-chip-button ${filtroEstadoAccion === estado ? 'activo' : ''}`} onClick={() => setFiltroEstadoAccion(estado)}>
+                    {formatearEstado(estado)}
+                  </button>
+                ))}
               </div>
-              <strong className="status-badge">{formatearEstado(orden.estado_actual)}</strong>
-            </div>
-            <p className="order-meta">{orden.cliente_nombre || orden.cliente_empresa || 'Cliente sin nombre'} · {orden.articulo_tipo} {orden.marca || ''}</p>
-            <p className="small text-secondary">Estado desde: {mostrarFecha(fechaEstado(orden))}</p>
-            {orden.accesorios?.length > 0 && <p className="small text-secondary">Accesorios: {formatearAccesorios(orden.accesorios)}</p>}
-            <div className="order-location mb-3">
-              <strong>Ubicación:</strong> {orden.ubicacion || 'Sin ubicación registrada'}
-              {editandoUbicacion === orden.id ? (
-                <div className="d-flex gap-2 mt-2">
-                  <input className="form-control" type="text" placeholder="Ej. Repisa A-3" value={ubicaciones[orden.id] ?? orden.ubicacion ?? ''} onChange={(e) => setUbicaciones({ ...ubicaciones, [orden.id]: e.target.value })} />
-                  <button type="button" className="button button-primary btn btn-primary" onClick={() => guardarUbicacion(orden.id)}>Guardar</button>
-                  <button type="button" className="button button-secondary btn btn-outline-secondary" onClick={() => setEditandoUbicacion(null)}>Cancelar</button>
-                </div>
-              ) : (
-                <button type="button" className="button button-quiet ms-2" onClick={() => { setUbicaciones({ ...ubicaciones, [orden.id]: orden.ubicacion || '' }); setEditandoUbicacion(orden.id); }}>Cambiar ubicación</button>
-              )}
-            </div>
-            <input
-              type="text"
-              placeholder="Comentario"
-              value={comentarios[orden.id] || ''}
-              onChange={(e) => setComentarios({ ...comentarios, [orden.id]: e.target.value })}
-              style={{ display: 'block', marginBottom: '8px', width: '100%' }}
-            />
-            {ACCIONES_RECEPCION[orden.estado_actual].map((siguienteEstado) => (
-              <button
-                className="button button-primary btn btn-primary"
-                key={siguienteEstado}
-                onClick={() => cambiarEstado(orden.id, siguienteEstado)}
-                style={{ marginRight: '8px' }}
+            )}
+            {ordenesAccion.length === 0 && <p className="alert alert-light border">No hay acciones pendientes por ahora.</p>}
+            {ordenesAccion.length > 0 && ordenesAccionFiltradas.length === 0 && <p className="alert alert-light border">Ninguna coincide con el filtro seleccionado.</p>}
+            {ordenesAccionFiltradas.map((orden) => (
+              <OrdenAcordeon
+                key={orden.id}
+                orden={orden}
+                kicker="Orden pendiente"
+                expandido={ordenExpandidaAccion === orden.id}
+                onToggle={() => setOrdenExpandidaAccion((actual) => (actual === orden.id ? null : orden.id))}
               >
-                Pasar a: {formatearEstado(siguienteEstado)}
-              </button>
+                <p className="small text-secondary">Estado desde: {mostrarFecha(fechaEstado(orden))}</p>
+                {orden.accesorios?.length > 0 && <p className="small text-secondary">Accesorios: {formatearAccesorios(orden.accesorios)}</p>}
+                <p className="order-location mb-3">
+                  <strong>Ubicación:</strong> {orden.ubicacion || 'Sin ubicación registrada'}
+                  {editandoUbicacion === orden.id && (
+                    <span className="d-flex gap-2 mt-2">
+                      <input className="form-control" type="text" placeholder="Ej. Repisa A-3" value={ubicaciones[orden.id] ?? orden.ubicacion ?? ''} onChange={(e) => setUbicaciones({ ...ubicaciones, [orden.id]: e.target.value })} />
+                      <button type="button" className="button button-primary btn btn-primary" onClick={() => guardarUbicacion(orden.id)}>Guardar</button>
+                      <button type="button" className="button button-secondary btn btn-outline-secondary" onClick={() => setEditandoUbicacion(null)}>Cancelar</button>
+                    </span>
+                  )}
+                </p>
+                <input
+                  type="text"
+                  placeholder="Comentario"
+                  value={comentarios[orden.id] || ''}
+                  onChange={(e) => setComentarios({ ...comentarios, [orden.id]: e.target.value })}
+                  style={{ display: 'block', marginBottom: '8px', width: '100%' }}
+                />
+                <div className="acciones-principales">
+                  {ACCIONES_RECEPCION[orden.estado_actual].map((siguienteEstado) => (
+                    <button
+                      className="button button-primary btn btn-primary"
+                      key={siguienteEstado}
+                      onClick={() => cambiarEstado(orden.id, siguienteEstado)}
+                    >
+                      Pasar a: {formatearEstado(siguienteEstado)}
+                    </button>
+                  ))}
+                </div>
+                <div className="d-flex align-items-center justify-content-between flex-wrap gap-2 mt-2">
+                  <HistorialOrden ordenId={orden.id} />
+                  <MenuAcciones etiqueta="Más acciones">
+                    <button
+                      type="button"
+                      className="button button-quiet"
+                      onClick={() => { setUbicaciones({ ...ubicaciones, [orden.id]: orden.ubicacion || '' }); setEditandoUbicacion(orden.id); }}
+                    >
+                      Cambiar ubicación
+                    </button>
+                    <EditorRepuestos ordenId={orden.id} onGuardado={cargarOrdenes} />
+                    <CambioEstadoAdmin orden={orden} onCambiado={cargarOrdenes} />
+                  </MenuAcciones>
+                </div>
+              </OrdenAcordeon>
             ))}
-            <EditorRepuestos ordenId={orden.id} onGuardado={cargarOrdenes} />
-            <CambioEstadoAdmin orden={orden} onCambiado={cargarOrdenes} />
-            <HistorialOrden ordenId={orden.id} />
-          </div>
-        ))}
+          </>
+        );
+      })()}
 
       <h2 className="h4 border-start border-4 ps-3">Todas las órdenes</h2>
       <div className="resumen-ordenes" aria-label="Resumen de órdenes">
@@ -480,7 +588,7 @@ function PanelRecepcion() {
       <div className="filtros-bar">
         <div className="filtro-campo">
           <label htmlFor="filtro-antiguedad-recepcion">Antigüedad</label>
-          <select id="filtro-antiguedad-recepcion" className="form-select" value={filtroAntiguedad} onChange={(e) => setFiltroAntiguedad(e.target.value)}>
+          <select id="filtro-antiguedad-recepcion" className="form-select" value={filtroAntiguedad} onChange={(e) => { setFiltroAntiguedad(e.target.value); setPaginaOrdenes(1); }}>
             <option value="todas">Todas las órdenes</option>
             <option value="una_semana">1 semana o más</option>
             <option value="dos_tres_semanas">2 a 3 semanas</option>
@@ -489,7 +597,7 @@ function PanelRecepcion() {
         </div>
         <div className="filtro-campo">
           <label htmlFor="filtro-estado-recepcion">Estado</label>
-          <select id="filtro-estado-recepcion" className="form-select" value={filtroEstado} onChange={(e) => setFiltroEstado(e.target.value)}>
+          <select id="filtro-estado-recepcion" className="form-select" value={filtroEstado} onChange={(e) => { setFiltroEstado(e.target.value); setPaginaOrdenes(1); }}>
             <option value="todos">Todos los estados</option>
             {estadosDisponibles.map((estado) => (
               <option key={estado} value={estado}>{formatearEstado(estado)}</option>
@@ -498,7 +606,7 @@ function PanelRecepcion() {
         </div>
         <div className="filtro-campo">
           <label htmlFor="filtro-tipo-recepcion">Tipo</label>
-          <select id="filtro-tipo-recepcion" className="form-select" value={filtroTipo} onChange={(e) => setFiltroTipo(e.target.value)}>
+          <select id="filtro-tipo-recepcion" className="form-select" value={filtroTipo} onChange={(e) => { setFiltroTipo(e.target.value); setPaginaOrdenes(1); }}>
             <option value="todos">Todos los tipos</option>
             {tiposDisponibles.map((tipoOrden) => (
               <option key={tipoOrden} value={tipoOrden}>{formatearTipoOrden(tipoOrden)}</option>
@@ -507,7 +615,7 @@ function PanelRecepcion() {
         </div>
         <div className="filtro-campo">
           <label htmlFor="filtro-ubicacion-recepcion">Ubicación</label>
-          <select id="filtro-ubicacion-recepcion" className="form-select" value={filtroUbicacion} onChange={(e) => setFiltroUbicacion(e.target.value)}>
+          <select id="filtro-ubicacion-recepcion" className="form-select" value={filtroUbicacion} onChange={(e) => { setFiltroUbicacion(e.target.value); setPaginaOrdenes(1); }}>
             <option value="todas">Todas las ubicaciones</option>
             {ubicacionesDisponibles.map((ubicacion) => (
               <option key={ubicacion} value={ubicacion}>{ubicacion}</option>
@@ -522,7 +630,7 @@ function PanelRecepcion() {
             type="text"
             placeholder="Código, cliente, teléfono o artículo"
             value={busquedaTexto}
-            onChange={(e) => setBusquedaTexto(e.target.value)}
+            onChange={(e) => { setBusquedaTexto(e.target.value); setPaginaOrdenes(1); }}
           />
         </div>
       </div>
@@ -557,7 +665,7 @@ function PanelRecepcion() {
               </tr>
             </thead>
             <tbody>
-              {ordenesTabla.map((orden) => (
+              {ordenesVisibles.map((orden) => (
                 <tr key={orden.id}>
                   <td data-label="Código"><span className="codigo-badge">{orden.codigo_seguimiento}</span></td>
                   <td data-label="Artículo">
@@ -601,6 +709,7 @@ function PanelRecepcion() {
                         <small className="estado-tiempo d-block mt-1">{formatearDias(antiguedadEstado(fechaEstado(orden))?.dias)} en este estado</small>
                       )}
                       <small className="estado-fecha d-block">Desde {mostrarFecha(fechaEstado(orden))}</small>
+                      <button type="button" className="button-quiet link-button d-block mt-1" onClick={() => generarPdfOrden(orden)}>Generar PDF</button>
                     </div>
                   </td>
                   <td data-label="Antigüedad">
@@ -618,6 +727,13 @@ function PanelRecepcion() {
               ))}
             </tbody>
           </table>
+          {totalPaginasOrdenes > 1 && (
+            <div className="clientes-paginacion">
+              <button type="button" className="button-quiet" disabled={paginaOrdenesSegura === 1} onClick={() => setPaginaOrdenes((pagina) => pagina - 1)}>Anterior</button>
+              <span>Página {paginaOrdenesSegura} de {totalPaginasOrdenes}</span>
+              <button type="button" className="button-quiet" disabled={paginaOrdenesSegura === totalPaginasOrdenes} onClick={() => setPaginaOrdenes((pagina) => pagina + 1)}>Siguiente</button>
+            </div>
+          )}
         </div>
       )}
     </div>

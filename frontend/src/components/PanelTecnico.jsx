@@ -4,7 +4,10 @@ import { formatearEstado } from '../utils/textoUI';
 import HistorialOrden from './HistorialOrden';
 import EditorRepuestos from './EditorRepuestos';
 import CambioEstadoAdmin from './CambioEstadoAdmin';
+import OrdenAcordeon from './OrdenAcordeon';
+import MenuAcciones from './MenuAcciones';
 import { abrirWhatsapp, enlaceSeguimiento, ENLACE_UBICACION, ENLACE_INSTAGRAM } from '../utils/whatsapp';
+import { descargarFacturaOrden } from '../utils/pdf';
 
 // Transiciones simples (via cambiar_estado.php) que no requieren formulario extra
 const TRANSICIONES_SIMPLES = {
@@ -91,6 +94,8 @@ function PanelTecnico() {
   const [editandoUbicacion, setEditandoUbicacion] = useState(null);
   const [ubicaciones, setUbicaciones] = useState({});
   const [filtroAntiguedad, setFiltroAntiguedad] = useState('todas');
+  const [filtroEstadoTecnico, setFiltroEstadoTecnico] = useState('todos');
+  const [ordenExpandida, setOrdenExpandida] = useState(null);
 
   // Formularios de cotizacion, uno por orden: { ordenId: {repuestos, dictamen, monto} }
   const [formsCotizacion, setFormsCotizacion] = useState({});
@@ -229,6 +234,10 @@ function PanelTecnico() {
           abono: Number(form.abono || 0),
         }),
       });
+      if (orden) {
+        const cotizacion = { dictamen: form.dictamen, repuestos, monto: montoTotal, abono: Number(form.abono || 0) };
+        await descargarFacturaOrden({ orden, cotizacion, sufijo: 'cotizacion' });
+      }
       const enlace = enlaceSeguimiento(orden?.codigo_seguimiento);
       const mensaje = [
         `Hola ${orden?.cliente_nombre || 'cliente'}, te contactamos desde Expertools.`,
@@ -261,6 +270,9 @@ function PanelTecnico() {
 
   async function responderCliente(ordenId, respuesta) {
     setError('');
+    const orden = ordenes.find((item) => item.id === ordenId);
+    // La ventana se abre antes del await para que el navegador no bloquee el popup.
+    const ventanaWhatsapp = respuesta === 'aprobada' ? window.open('', '_blank') : null;
     try {
       await apiFetch('cotizacion.php', {
         method: 'PATCH',
@@ -269,13 +281,36 @@ function PanelTecnico() {
           respuesta,
         }),
       });
+      if (respuesta === 'aprobada' && orden) {
+        if (ventanaWhatsapp) {
+          const mensaje = [
+            `Hola ${orden.cliente_nombre || orden.cliente_empresa || 'cliente'}, te contactamos desde Expertools.`,
+            'Confirmamos que autorizaste la reparación. Ya estamos trabajando en tu equipo.',
+            '',
+            `- Código: ${orden.codigo_seguimiento}`,
+            `Sigue tu orden en tiempo real aquí: ${enlaceSeguimiento(orden.codigo_seguimiento)}`,
+          ].join('\n');
+          abrirWhatsapp(ventanaWhatsapp, orden.cliente_telefono, mensaje);
+        }
+      } else if (ventanaWhatsapp) {
+        ventanaWhatsapp.close();
+      }
       cargarOrdenes();
     } catch (err) {
+      if (ventanaWhatsapp) ventanaWhatsapp.close();
       setError(err.message);
     }
   }
 
   if (cargando) return <p>Cargando...</p>;
+
+  function alternarExpandida(ordenId) {
+    setOrdenExpandida((actual) => (actual === ordenId ? null : ordenId));
+  }
+
+  const ordenesFiltradas = ordenes
+    .filter((orden) => coincideFiltroAntiguedad(orden.fecha_ingreso, filtroAntiguedad))
+    .filter((orden) => filtroEstadoTecnico === 'todos' || orden.estado_actual === filtroEstadoTecnico);
 
   return (
     <div className="operations-panel">
@@ -294,33 +329,42 @@ function PanelTecnico() {
         <span><i className="leyenda-color antiguedad-naranja" /> 2 a 3 semanas</span>
         <span><i className="leyenda-color antiguedad-roja" /> 4 semanas o más</span>
       </div>
+      <div className="tabs-filtro-estado" role="tablist" aria-label="Filtrar por estado">
+        <button type="button" className={`resumen-chip resumen-chip-button ${filtroEstadoTecnico === 'todos' ? 'activo' : ''}`} onClick={() => setFiltroEstadoTecnico('todos')}>
+          Todos
+        </button>
+        {ESTADOS_ACCIONABLES.filter((estado) => ordenes.some((orden) => orden.estado_actual === estado)).map((estado) => (
+          <button type="button" key={estado} className={`resumen-chip resumen-chip-button ${filtroEstadoTecnico === estado ? 'activo' : ''}`} onClick={() => setFiltroEstadoTecnico(estado)}>
+            {formatearEstado(estado)}
+          </button>
+        ))}
+      </div>
       {error && <p className="alert alert-danger">{error}</p>}
       {ordenes.length === 0 && <p className="alert alert-light border">No hay órdenes pendientes por ahora.</p>}
+      {ordenes.length > 0 && ordenesFiltradas.length === 0 && <p className="alert alert-light border">Ninguna orden coincide con el filtro seleccionado.</p>}
 
-      {ordenes.filter((orden) => coincideFiltroAntiguedad(orden.fecha_ingreso, filtroAntiguedad)).map((orden) => (
-        <div key={orden.id} className={`order-card card shadow-sm rounded-3 border-0 ${antiguedadIngreso(orden.fecha_ingreso)?.clase || ''}`}>
-          <div className="order-card-header">
-            <div>
-              <span className="order-kicker">Trabajo en cola</span>
-              <h3 className="h5">{orden.codigo_seguimiento}</h3>
-            </div>
-            <strong className="status-badge">{formatearEstado(orden.estado_actual)}</strong>
-          </div>
+      {ordenesFiltradas.map((orden) => (
+        <OrdenAcordeon
+          key={orden.id}
+          orden={orden}
+          kicker="Trabajo en cola"
+          claseExtra={antiguedadIngreso(orden.fecha_ingreso)?.clase || ''}
+          expandido={ordenExpandida === orden.id}
+          onToggle={() => alternarExpandida(orden.id)}
+        >
           {antiguedadEstado(fechaEstado(orden))?.horas >= 24 && <p className={`alert ${antiguedadEstado(fechaEstado(orden)).clase} py-2`}>Pendiente hace {antiguedadEstado(fechaEstado(orden)).horas} h</p>}
           <p className="small text-secondary">Estado desde: {mostrarFecha(fechaEstado(orden))}</p>
           {antiguedadIngreso(orden.fecha_ingreso)?.dias >= 7 && <p className={`alert antiguedad-aviso py-2 mb-2 ${antiguedadIngreso(orden.fecha_ingreso).clase}`}>Orden ingresada hace {antiguedadIngreso(orden.fecha_ingreso).dias} días</p>}
-          <div className="order-location mb-3">
+          <p className="order-location mb-3">
             <strong>Ubicación:</strong> {orden.ubicacion || 'Sin ubicación registrada'}
-            {editandoUbicacion === orden.id ? (
-              <div className="d-flex gap-2 mt-2">
+            {editandoUbicacion === orden.id && (
+              <span className="d-flex gap-2 mt-2">
                 <input className="form-control" type="text" placeholder="Ej. Repisa A-3" value={ubicaciones[orden.id] ?? orden.ubicacion ?? ''} onChange={(e) => setUbicaciones({ ...ubicaciones, [orden.id]: e.target.value })} />
                 <button type="button" className="button button-primary btn btn-primary" onClick={() => guardarUbicacion(orden.id)}>Guardar</button>
                 <button type="button" className="button button-secondary btn btn-outline-secondary" onClick={() => setEditandoUbicacion(null)}>Cancelar</button>
-              </div>
-            ) : (
-              <button type="button" className="button button-quiet ms-2" onClick={() => { setUbicaciones({ ...ubicaciones, [orden.id]: orden.ubicacion || '' }); setEditandoUbicacion(orden.id); }}>Cambiar ubicación</button>
+              </span>
             )}
-          </div>
+          </p>
           <div className="order-summary-grid">
             <p><span>Cliente</span>{orden.cliente_nombre || orden.cliente_empresa || 'Cliente sin nombre'} <small>{orden.cliente_telefono || 'sin teléfono'}</small></p>
             <p><span>Artículo</span>{orden.articulo_tipo} {orden.marca || ''} {orden.modelo || ''}</p>
@@ -334,9 +378,11 @@ function PanelTecnico() {
 
           {/* Estado: recibido -> boton para tomar la orden */}
           {(orden.estado_actual === 'recibido' || orden.estado_actual === 'sin_respuesta' || orden.estado_actual === 'esperando_tecnico') && (
-            <button className="button button-primary btn btn-primary" onClick={() => tomarOrden(orden.id, orden.estado_actual)}>
-              {orden.estado_actual === 'esperando_tecnico' ? 'Tomar orden (iniciar reparación)' : 'Tomar orden (empezar diagnóstico)'}
-            </button>
+            <div className="acciones-principales">
+              <button className="button button-primary btn btn-primary" onClick={() => tomarOrden(orden.id, orden.estado_actual)}>
+                {orden.estado_actual === 'esperando_tecnico' ? 'Tomar orden (iniciar reparación)' : 'Tomar orden (empezar diagnóstico)'}
+              </button>
+            </div>
           )}
 
           {/* Estado: en_diagnostico -> formulario de cotizacion + opcion chatarra */}
@@ -419,18 +465,20 @@ function PanelTecnico() {
                   Agregar repuesto
                 </button>
               </div>
-              <button className="button button-primary btn btn-primary" onClick={() => enviarCotizacion(orden.id)}>Enviar cotización</button>{' '}
-              <button className="button button-danger btn btn-outline-danger" onClick={() => marcarChatarra(orden.id)} style={{ color: 'red' }}>
-                Marcar como chatarra (irreparable)
-              </button>
+              <div className="acciones-principales">
+                <button className="button button-primary btn btn-primary" onClick={() => enviarCotizacion(orden.id)}>Enviar cotización</button>
+                <button className="button button-danger btn btn-outline-danger" onClick={() => marcarChatarra(orden.id)} style={{ color: 'red' }}>
+                  Marcar como chatarra (irreparable)
+                </button>
+              </div>
             </div>
           )}
 
           {/* Estado: cotizado -> registrar la respuesta del cliente */}
           {(orden.estado_actual === 'cotizado' || orden.estado_actual === 'esperando_respuesta') && (
-            <div>
-              <button className="button button-primary btn btn-primary" onClick={() => responderCliente(orden.id, 'aprobada')}>Cliente aprobó</button>{' '}
-              <button className="button button-danger btn btn-outline-danger" onClick={() => responderCliente(orden.id, 'rechazada')}>Cliente no aprobó</button>{' '}
+            <div className="acciones-principales">
+              <button className="button button-primary btn btn-primary" onClick={() => responderCliente(orden.id, 'aprobada')}>Cliente aprobó</button>
+              <button className="button button-danger btn btn-outline-danger" onClick={() => responderCliente(orden.id, 'rechazada')}>Cliente no aprobó</button>
               <button className="button button-secondary btn btn-outline-secondary" onClick={() => responderCliente(orden.id, 'en_espera')}>
                 En espera de respuesta
               </button>
@@ -439,20 +487,32 @@ function PanelTecnico() {
 
           {/* Estados con transicion simple */}
           {TRANSICIONES_SIMPLES[orden.estado_actual] && (
-            <div>
+            <div className="acciones-principales">
               {TRANSICIONES_SIMPLES[orden.estado_actual].map((siguiente) => (
-                <button className="button button-secondary btn btn-outline-secondary" key={siguiente} onClick={() => cambiarEstadoSimple(orden.id, siguiente)} style={{ marginRight: '8px' }}>
+                <button className="button button-secondary btn btn-outline-secondary" key={siguiente} onClick={() => cambiarEstadoSimple(orden.id, siguiente)}>
                   Pasar a: {formatearEstado(siguiente)}
                 </button>
               ))}
             </div>
           )}
-          {ESTADOS_CON_COTIZACION.includes(orden.estado_actual) && (
-            <EditorRepuestos ordenId={orden.id} onGuardado={cargarOrdenes} />
-          )}
-          <CambioEstadoAdmin orden={orden} onCambiado={cargarOrdenes} />
-          <HistorialOrden ordenId={orden.id} />
-        </div>
+
+          <div className="d-flex align-items-center justify-content-between flex-wrap gap-2 mt-2">
+            <HistorialOrden ordenId={orden.id} />
+            <MenuAcciones etiqueta="Más acciones">
+              <button
+                type="button"
+                className="button button-quiet"
+                onClick={() => { setUbicaciones({ ...ubicaciones, [orden.id]: orden.ubicacion || '' }); setEditandoUbicacion(orden.id); }}
+              >
+                Cambiar ubicación
+              </button>
+              {ESTADOS_CON_COTIZACION.includes(orden.estado_actual) && (
+                <EditorRepuestos ordenId={orden.id} onGuardado={cargarOrdenes} />
+              )}
+              <CambioEstadoAdmin orden={orden} onCambiado={cargarOrdenes} />
+            </MenuAcciones>
+          </div>
+        </OrdenAcordeon>
       ))}
     </div>
   );

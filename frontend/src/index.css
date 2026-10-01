@@ -184,6 +184,7 @@ h2 { font-size: 1.45rem; }
 }
 .site-header { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; column-gap: 28px; }
 .site-header .brand { min-width: 0; flex: 0 0 auto; }
+.site-footer { border-top: 1px solid var(--border); margin-top: 32px; color: var(--ink-soft); }
 .brand-mark { background: var(--accent); box-shadow: none; border-radius: 8px; }
 .brand-logo { display: block; width: 170px; height: 64px; object-fit: contain; }
 .auth-logo { display: block; width: 230px; height: 100px; object-fit: contain; object-position: left center; }
@@ -373,6 +374,74 @@ button:not(.button-quiet):hover, .button-primary:hover { background: var(--accen
 .order-summary-grid p { display: grid; gap: 2px; margin: 0; color: var(--text-h); }
 .order-summary-grid span { color: #6c757d; font-size: 11px; font-weight: 700; letter-spacing: .7px; text-transform: uppercase; }
 .order-summary-grid small { color: #6c757d; }
+
+/* Acordeon de ordenes: fila resumen colapsada + cuerpo expandible */
+.orden-acordeon { margin: 10px 0; padding: 0; overflow: visible; }
+.orden-acordeon-resumen {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: auto;
+  padding: 12px 16px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.orden-acordeon-resumen:hover { background: var(--accent-soft); }
+.orden-acordeon-chevron { flex: 0 0 auto; color: var(--accent-dark); font-size: 13px; }
+.orden-acordeon-codigo { flex: 0 0 auto; color: var(--accent-dark); font-weight: 700; font-size: 13px; }
+.orden-acordeon-cliente { flex: 1 1 180px; min-width: 0; color: var(--text-h); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.orden-acordeon-articulo { flex: 1 1 160px; min-width: 0; color: #6c757d; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.orden-acordeon-kicker { flex: 0 0 auto; color: #6c757d; font-size: 11px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; white-space: nowrap; }
+.orden-acordeon-badge { flex: 0 0 auto; }
+.orden-acordeon-body { padding: 0 20px 20px; border-top: 1px solid var(--border); }
+.orden-acordeon-body > p:first-child, .orden-acordeon-body > div:first-child { margin-top: 16px; }
+
+/* Botones de accion principal en fila (no apilados) dentro del cuerpo expandido */
+.acciones-principales { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 10px 0; }
+.acciones-principales .button, .acciones-principales button { width: auto; margin: 0 !important; }
+
+/* Menu "..." de acciones secundarias (editar repuestos, forzar estado, ubicacion) */
+.menu-acciones { position: relative; display: inline-block; }
+.menu-acciones-boton {
+  min-height: 32px;
+  min-width: 32px;
+  padding: 2px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: #495057;
+  font-weight: 700;
+  line-height: 1;
+}
+.menu-acciones-boton:hover { background: var(--accent-soft); color: var(--text-h); }
+.menu-acciones-backdrop { position: fixed; inset: 0; z-index: 999; background: transparent; }
+.menu-acciones-panel {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 220px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: var(--shadow-soft);
+}
+.menu-acciones-panel .button, .menu-acciones-panel button { width: 100%; margin: 0 !important; text-align: left; }
+
+/* Pestanas de filtro por estado arriba de cada lista de ordenes */
+.tabs-filtro-estado { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+.tabs-filtro-estado .resumen-chip-button.activo { border-color: var(--accent); background: var(--accent-soft); color: var(--text-h); }
+
 .order-history { margin-top: 18px; border-top: 1px solid var(--border); padding-top: 13px; }
 .order-history-compacta { margin-top: 0; border-top: 0; padding-top: 0; }
 .history-toggle { display: inline-flex; align-items: center; gap: 8px; min-height: 32px; padding: 4px 0; border: 0; color: var(--accent-dark); background: transparent; font-size: 13px; font-weight: 700; }
@@ -489,5 +558,8 @@ input:focus, select:focus, textarea:focus { outline: 0; border-color: var(--acce
   .articulo-accesorio-edicion { grid-template-columns: 1fr; }
   .order-card-header { align-items: flex-start; }
   .order-summary-grid { grid-template-columns: 1fr; }
+  .orden-acordeon-resumen { flex-wrap: wrap; gap: 6px 10px; }
+  .orden-acordeon-cliente, .orden-acordeon-articulo { flex-basis: 100%; white-space: normal; }
+  .acciones-principales .button, .acciones-principales button { flex: 1 1 auto; }
   .history-item-head { align-items: flex-start; flex-direction: column; gap: 3px; }
 }

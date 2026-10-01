@@ -7,6 +7,7 @@ import PanelTecnico from './components/PanelTecnico';
 import Seguimiento from './components/Seguimiento';
 import { formatearRol } from './utils/textoUI';
 import GestionUsuarios from './components/GestionUsuarios';
+import Footer from './components/Footer';
 import { API_BASE } from './api';
 
 function Marca() {
@@ -83,6 +84,7 @@ function Panel() {
       {(usuario.rol === 'recepcion' || usuario.rol === 'admin') && <PanelRecepcion />}
       {usuario.rol === 'tecnico' && <PanelTecnico />}
       </main>
+      <Footer />
     </div>
   );
 }
@@ -106,6 +108,7 @@ function PaginaUsuarios() {
         <GestionUsuarios />
         <Link className="button button-secondary d-inline-block mt-4 text-decoration-none" to="/panel">Volver al panel</Link>
       </main>
+      <Footer />
     </div>
   );
 }
