@@ -153,6 +153,6 @@ export async function generarFacturaOrdenPdf({ orden, cotizacion }) {
 // Genera el PDF y dispara su descarga en el navegador.
 export async function descargarFacturaOrden({ orden, cotizacion, sufijo }) {
   const doc = await generarFacturaOrdenPdf({ orden, cotizacion });
-  const nombre = `Factura-${orden.codigo_seguimiento || orden.id}${sufijo ? `-${sufijo}` : ''}.pdf`;
+  const nombre = `Comprobante-${orden.codigo_seguimiento || orden.id}${sufijo ? `-${sufijo}` : ''}.pdf`;
   doc.save(nombre);
 }
