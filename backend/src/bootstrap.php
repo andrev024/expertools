@@ -23,6 +23,10 @@ function env(string $key, $default = null)
 // El navegador manda una petición "OPTIONS" de prueba antes de peticiones
 // con headers como Authorization o Content-Type: application/json.
 // Si no respondemos algo aquí, el navegador cancela todo con "Failed to fetch".
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type, Authorization');
+
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
     exit;
