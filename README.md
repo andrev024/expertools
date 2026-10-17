@@ -64,6 +64,8 @@ graph LR
 
 ```mermaid
 erDiagram
+    Ferreteria ||--o{ Usuario : tiene
+    Ferreteria ||--o{ Cliente : atiende
     Cliente ||--o{ Articulo : posee
     Articulo ||--o{ OrdenServicio : "tiene ordenes"
     Usuario ||--o{ OrdenServicio : "asignado como tecnico"
@@ -71,10 +73,27 @@ erDiagram
     OrdenServicio ||--o{ HistorialEstado : registra
     OrdenServicio }o--o| OrdenServicio : "garantia de"
 
+    Ferreteria {
+        int id
+        string slug
+        string nombre_comercial
+        string telefono
+        string direccion
+        string logo_key
+        string codigo_prefijo
+        int siguiente_consecutivo
+    }
     Cliente {
         int id
+        int ferreteria_id
         string nombre
         string telefono
+    }
+    Usuario {
+        int id
+        int ferreteria_id
+        string nombre
+        string rol
     }
     Articulo {
         int id
@@ -84,6 +103,7 @@ erDiagram
     }
     OrdenServicio {
         int id
+        int ferreteria_id
         string codigo_seguimiento
         string tipo
         string estado_actual
@@ -103,6 +123,17 @@ erDiagram
         date fecha
     }
 ```
+
+Cada usuario y cliente pertenece a una ferretería. Los artículos, órdenes,
+cotizaciones e historial se aíslan por sus relaciones con el cliente y la
+orden. La API aplica el ámbito de la ferretería autenticada a cada operación.
+La migración de base de datos está documentada en
+[Instalación y configuración](docs/INSTALACION.md).
+
+Cada ferretería puede configurar sus datos comerciales y logo para los
+comprobantes desde **Marca del negocio**. Los logos se guardan en un bucket
+privado de Cloudflare R2; los requisitos de configuración están en
+[Instalación y configuración](docs/INSTALACION.md).
 
 ## Máquina de estados
 

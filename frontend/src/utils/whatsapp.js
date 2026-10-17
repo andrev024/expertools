@@ -10,7 +10,13 @@ export const ENLACE_INSTAGRAM = 'https://www.instagram.com/expertools_herramient
 
 // Arma el link publico de seguimiento para un código de orden dado.
 export function enlaceSeguimiento(codigoSeguimiento) {
-  return `${FRONTEND_URL}/#/seguimiento?codigo=${encodeURIComponent(codigoSeguimiento || '')}`;
+  const params = new URLSearchParams({ codigo: codigoSeguimiento || '' });
+  const usuario = JSON.parse(localStorage.getItem('usuario') || '{}');
+  if (!usuario.ferreteria_slug) {
+    throw new Error('La sesión no tiene una ferretería asociada; inicia sesión nuevamente');
+  }
+  params.set('ferreteria', usuario.ferreteria_slug);
+  return `${FRONTEND_URL}/#/seguimiento?${params.toString()}`;
 }
 
 // Dominio público mostrado al cliente en los mensajes de WhatsApp (sitio institucional).
@@ -19,7 +25,7 @@ export const SITIO_WEB = 'https://expertools.com.co';
 // Texto para que el cliente consulte el estado de su orden en el sitio web,
 // indicando el número de orden (en vez de un link directo con el código).
 export function textoSeguimiento(codigoSeguimiento) {
-  return `Consulta el estado de tu orden en ${SITIO_WEB}, con el número de orden: ${codigoSeguimiento}`;
+  return `Consulta tu orden ${codigoSeguimiento} en ${SITIO_WEB}: ${enlaceSeguimiento(codigoSeguimiento)}`;
 }
 
 // Normaliza un teléfono colombiano de 10 dígitos (celular) al formato

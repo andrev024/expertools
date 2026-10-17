@@ -8,3 +8,9 @@
 | Cliente | Consultar publicamente el avance de una orden mediante su codigo de seguimiento |
 
 Las operaciones internas requieren autenticacion mediante JWT. El seguimiento publico no requiere cuenta, pero solo expone la informacion preparada para consulta del cliente y no los datos internos de autenticacion o administracion.
+
+Cada usuario pertenece a una ferretería. Las operaciones de gestión de usuarios
+(listar, crear, editar y eliminar) solo afectan usuarios de la misma
+ferretería; el mismo límite aplica a clientes, artículos, órdenes y sus
+registros asociados. Los roles conservan sus permisos actuales dentro de esa
+ferretería.

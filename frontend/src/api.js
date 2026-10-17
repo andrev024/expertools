@@ -32,3 +32,47 @@ export async function apiFetch(endpoint, opciones = {}) {
 
   return datos;
 }
+
+export async function apiFetchForm(endpoint, formData, method = 'POST') {
+  const token = localStorage.getItem('token');
+  const headers = token ? { Authorization: `Bearer ${token}` } : {};
+  const respuesta = await fetch(`${API_BASE}/${endpoint}`, {
+    method,
+    headers,
+    body: formData,
+  });
+
+  const contenido = await respuesta.text();
+  let datos;
+  try {
+    datos = contenido ? JSON.parse(contenido) : {};
+  } catch {
+    throw new Error(`La API no devolvió JSON (HTTP ${respuesta.status}). Verifica que el backend esté actualizado.`);
+  }
+
+  if (!respuesta.ok) {
+    throw new Error(datos.error || 'Error en la petición');
+  }
+
+  return datos;
+}
+
+export async function apiFetchBlob(endpoint) {
+  const token = localStorage.getItem('token');
+  const respuesta = await fetch(`${API_BASE}/${endpoint}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+
+  if (!respuesta.ok) {
+    const contenido = await respuesta.text();
+    let datos;
+    try {
+      datos = contenido ? JSON.parse(contenido) : {};
+    } catch {
+      throw new Error(`La API no devolvió un error válido (HTTP ${respuesta.status})`);
+    }
+    throw new Error(datos.error || 'No se pudo obtener el archivo');
+  }
+
+  return respuesta.blob();
+}

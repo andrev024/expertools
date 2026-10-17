@@ -9,14 +9,16 @@ use Exception;
 class JwtHelper
 {
     // Genera un token para un usuario recién autenticado.
-    // "sub" (subject) = id del usuario, "rol" = para autorización por rol.
-    public static function generar(int $usuarioId, string $rol): string
+    // "sub" (subject) = id del usuario, "rol" = para autorización por rol,
+    // y "ferreteria_id" = ámbito de datos del usuario autenticado.
+    public static function generar(int $usuarioId, int $ferreteriaId, string $rol): string
     {
         $secret = env('JWT_SECRET');
         $expSegundos = (int) (env('JWT_EXPIRATION_SECONDS') ?: 28800);
 
         $payload = [
             'sub' => $usuarioId,
+            'ferreteria_id' => $ferreteriaId,
             'rol' => $rol,
             'iat' => time(),                  // issued at (cuándo se creó)
             'exp' => time() + $expSegundos,    // expiration (cuándo caduca)

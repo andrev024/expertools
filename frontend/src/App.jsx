@@ -7,6 +7,7 @@ import PanelTecnico from './components/PanelTecnico';
 import Seguimiento from './components/Seguimiento';
 import { formatearRol } from './utils/textoUI';
 import GestionUsuarios from './components/GestionUsuarios';
+import MarcaFerreteria from './components/MarcaFerreteria';
 import Footer from './components/Footer';
 import { API_BASE } from './api';
 
@@ -46,6 +47,7 @@ function Encabezado({ usuario, logout }) {
               <span className="user-details"><b>{usuario.nombre}</b><small>{formatearRol(usuario.rol)}</small></span>
             </div>
             {(usuario.rol === 'recepcion' || usuario.rol === 'admin') && <Link className="users-link" to="/usuarios">Usuarios</Link>}
+            {(usuario.rol === 'recepcion' || usuario.rol === 'admin') && <Link className="users-link" to="/marca">Marca del negocio</Link>}
             {(usuario.rol === 'recepcion' || usuario.rol === 'admin') && <button className="users-link backup-link" type="button" onClick={descargarBaseDatos}>Descargar base de datos</button>}
             <button className="button button-quiet btn btn-link" onClick={logout}>Cerrar sesión</button>
           </>
@@ -113,6 +115,30 @@ function PaginaUsuarios() {
   );
 }
 
+function PaginaMarca() {
+  const { usuario, logout } = useAuth();
+
+  if (!usuario || !['recepcion', 'admin'].includes(usuario.rol)) {
+    return <Navigate to="/panel" />;
+  }
+
+  return (
+    <div className="app-shell">
+      <Encabezado usuario={usuario} logout={logout} />
+      <main className="page-content container">
+        <div className="page-intro">
+          <span className="eyebrow text-uppercase fw-semibold">Expertools / administración</span>
+          <h1 className="display-5 fw-semibold">Marca del negocio</h1>
+          <p className="page-lead text-secondary">Configura los datos comerciales y el logo que aparecerán en los comprobantes de esta ferretería.</p>
+        </div>
+        <MarcaFerreteria />
+        <Link className="button button-secondary d-inline-block mt-4 text-decoration-none" to="/panel">Volver al panel</Link>
+      </main>
+      <Footer />
+    </div>
+  );
+}
+
 function App() {
   return (
     <AuthProvider>
@@ -133,6 +159,14 @@ function App() {
             element={
               <RutaProtegida>
                 <PaginaUsuarios />
+              </RutaProtegida>
+            }
+          />
+          <Route
+            path="/marca"
+            element={
+              <RutaProtegida>
+                <PaginaMarca />
               </RutaProtegida>
             }
           />

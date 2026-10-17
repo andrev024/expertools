@@ -26,6 +26,11 @@ class Middleware
             die(json_encode(['error' => $e->getMessage()]));
         }
 
+        if (!isset($payload->ferreteria_id) || (int) $payload->ferreteria_id < 1) {
+            http_response_code(401);
+            die(json_encode(['error' => 'La sesión no tiene una ferretería asociada; inicia sesión nuevamente']));
+        }
+
         if (!empty($rolesPermitidos) && !in_array($payload->rol, $rolesPermitidos)) {
             http_response_code(403);
             die(json_encode(['error' => 'No tienes permiso para esta acción']));

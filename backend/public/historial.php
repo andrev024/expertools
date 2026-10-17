@@ -7,7 +7,7 @@ use App\Middleware;
 
 header('Content-Type: application/json');
 
-Middleware::requireAuth(['recepcion', 'tecnico', 'admin']);
+$usuarioAuth = Middleware::requireAuth(['recepcion', 'tecnico', 'admin']);
 
 $pdo = Database::getConnection();
 
@@ -27,11 +27,14 @@ $stmt = $pdo->prepare(
                       WHERE os2.id = h.orden_id), '') AS accesorios
      FROM historial_estado h
      LEFT JOIN usuario u ON u.id = h.usuario_id
-     WHERE h.orden_id = ?
+     JOIN orden_servicio os ON os.id = h.orden_id
+     JOIN articulo ar ON ar.id = os.articulo_id
+     JOIN cliente c ON c.id = ar.cliente_id
+     WHERE h.orden_id = ? AND c.ferreteria_id = ?
      ORDER BY h.fecha ASC"
 );
 try {
-    $stmt->execute([$ordenId]);
+    $stmt->execute([$ordenId, (int) $usuarioAuth->ferreteria_id]);
 } catch (\Exception $e) {
     error_log('Error al consultar historial: ' . $e->getMessage());
     http_response_code(500);

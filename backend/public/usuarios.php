@@ -7,11 +7,17 @@ use App\Middleware;
 
 header('Content-Type: application/json; charset=utf-8');
 $usuarioAuth = Middleware::requireAuth(['recepcion', 'admin']);
+$ferreteriaId = (int) $usuarioAuth->ferreteria_id;
 $pdo = Database::getConnection();
 $metodo = $_SERVER['REQUEST_METHOD'];
 
 if ($metodo === 'GET') {
-    echo json_encode($pdo->query('SELECT id, nombre, email, rol, creado_en FROM usuario ORDER BY nombre')->fetchAll());
+    $stmt = $pdo->prepare(
+        'SELECT id, nombre, email, rol, creado_en
+         FROM usuario WHERE ferreteria_id = ? ORDER BY nombre'
+    );
+    $stmt->execute([$ferreteriaId]);
+    echo json_encode($stmt->fetchAll());
     exit;
 }
 
@@ -30,8 +36,10 @@ if ($metodo === 'POST' || $metodo === 'PUT') {
     }
     try {
         if ($metodo === 'POST') {
-            $stmt = $pdo->prepare('INSERT INTO usuario (nombre, email, password_hash, rol) VALUES (?, ?, ?, ?)');
-            $stmt->execute([$nombre, $email, password_hash($password, PASSWORD_DEFAULT), $rol]);
+            $stmt = $pdo->prepare(
+                'INSERT INTO usuario (ferreteria_id, nombre, email, password_hash, rol) VALUES (?, ?, ?, ?, ?)'
+            );
+            $stmt->execute([$ferreteriaId, $nombre, $email, password_hash($password, PASSWORD_DEFAULT), $rol]);
             $id = $pdo->lastInsertId();
         } else {
             if (!$id) {
@@ -39,12 +47,19 @@ if ($metodo === 'POST' || $metodo === 'PUT') {
                 echo json_encode(['error' => 'id es requerido']);
                 exit;
             }
+            $propietario = $pdo->prepare('SELECT id FROM usuario WHERE id = ? AND ferreteria_id = ?');
+            $propietario->execute([$id, $ferreteriaId]);
+            if (!$propietario->fetchColumn()) {
+                http_response_code(404);
+                echo json_encode(['error' => 'Usuario no encontrado']);
+                exit;
+            }
             if ($password) {
-                $stmt = $pdo->prepare('UPDATE usuario SET nombre = ?, email = ?, password_hash = ?, rol = ? WHERE id = ?');
-                $stmt->execute([$nombre, $email, password_hash($password, PASSWORD_DEFAULT), $rol, $id]);
+                $stmt = $pdo->prepare('UPDATE usuario SET nombre = ?, email = ?, password_hash = ?, rol = ? WHERE id = ? AND ferreteria_id = ?');
+                $stmt->execute([$nombre, $email, password_hash($password, PASSWORD_DEFAULT), $rol, $id, $ferreteriaId]);
             } else {
-                $stmt = $pdo->prepare('UPDATE usuario SET nombre = ?, email = ?, rol = ? WHERE id = ?');
-                $stmt->execute([$nombre, $email, $rol, $id]);
+                $stmt = $pdo->prepare('UPDATE usuario SET nombre = ?, email = ?, rol = ? WHERE id = ? AND ferreteria_id = ?');
+                $stmt->execute([$nombre, $email, $rol, $id, $ferreteriaId]);
             }
         }
         echo json_encode(['id' => $id, 'nombre' => $nombre, 'email' => $email, 'rol' => $rol]);
@@ -62,8 +77,15 @@ if ($metodo === 'DELETE') {
         echo json_encode(['error' => 'No puedes eliminar tu propio usuario']);
         exit;
     }
-    $stmt = $pdo->prepare('DELETE FROM usuario WHERE id = ?');
-    $stmt->execute([$id]);
+    $propietario = $pdo->prepare('SELECT id FROM usuario WHERE id = ? AND ferreteria_id = ?');
+    $propietario->execute([$id, $ferreteriaId]);
+    if (!$propietario->fetchColumn()) {
+        http_response_code(404);
+        echo json_encode(['error' => 'Usuario no encontrado']);
+        exit;
+    }
+    $stmt = $pdo->prepare('DELETE FROM usuario WHERE id = ? AND ferreteria_id = ?');
+    $stmt->execute([$id, $ferreteriaId]);
     echo json_encode(['eliminado' => $stmt->rowCount() > 0]);
     exit;
 }

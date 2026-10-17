@@ -8,6 +8,7 @@ use App\Middleware;
 header('Content-Type: application/json');
 
 $usuarioAuth = Middleware::requireAuth(['recepcion', 'admin']);
+$ferreteriaId = (int) $usuarioAuth->ferreteria_id;
 
 $pdo = Database::getConnection();
 $metodo = $_SERVER['REQUEST_METHOD'];
@@ -15,20 +16,20 @@ $metodo = $_SERVER['REQUEST_METHOD'];
 if ($metodo === 'POST') {
     $datos = json_decode(file_get_contents('php://input'), true) ?: [];
     if (($datos['operacion'] ?? '') === 'actualizar') {
-        actualizarArticulo($pdo, $datos);
+        actualizarArticulo($pdo, $ferreteriaId, $datos);
     } else {
-        crearArticulo($pdo, $datos);
+        crearArticulo($pdo, $ferreteriaId, $datos);
     }
 } elseif ($metodo === 'GET') {
-    listarArticulos($pdo);
+    listarArticulos($pdo, $ferreteriaId);
 } elseif ($metodo === 'PATCH') {
-    actualizarArticulo($pdo);
+    actualizarArticulo($pdo, $ferreteriaId);
 } else {
     http_response_code(405);
     echo json_encode(['error' => 'Método no permitido']);
 }
 
-function actualizarArticulo(\PDO $pdo, ?array $datos = null): void
+function actualizarArticulo(\PDO $pdo, int $ferreteriaId, ?array $datos = null): void
 {
     $datos ??= json_decode(file_get_contents('php://input'), true) ?: [];
     $articuloId = $datos['articulo_id'] ?? null;
@@ -44,10 +45,27 @@ function actualizarArticulo(\PDO $pdo, ?array $datos = null): void
         return;
     }
 
+    $propietario = $pdo->prepare(
+        'SELECT a.id FROM articulo a
+         JOIN cliente c ON c.id = a.cliente_id
+         WHERE a.id = ? AND c.ferreteria_id = ?'
+    );
+    $propietario->execute([$articuloId, $ferreteriaId]);
+    if (!$propietario->fetchColumn()) {
+        http_response_code(404);
+        echo json_encode(['error' => 'Artículo no encontrado']);
+        return;
+    }
+
     $pdo->beginTransaction();
     try {
-        $stmt = $pdo->prepare('UPDATE articulo SET tipo = ?, marca = ?, modelo = ?, serial = ? WHERE id = ?');
-        $stmt->execute([$tipo, $marca ?: null, $modelo ?: null, $serial ?: null, $articuloId]);
+        $stmt = $pdo->prepare(
+            'UPDATE articulo a
+             JOIN cliente c ON c.id = a.cliente_id
+             SET a.tipo = ?, a.marca = ?, a.modelo = ?, a.serial = ?
+             WHERE a.id = ? AND c.ferreteria_id = ?'
+        );
+        $stmt->execute([$tipo, $marca ?: null, $modelo ?: null, $serial ?: null, $articuloId, $ferreteriaId]);
 
         $pdo->prepare('DELETE FROM accesorio WHERE articulo_id = ?')->execute([$articuloId]);
         $stmtAccesorio = $pdo->prepare('INSERT INTO accesorio (articulo_id, nombre, descripcion) VALUES (?, ?, ?)');
@@ -68,7 +86,7 @@ function actualizarArticulo(\PDO $pdo, ?array $datos = null): void
     echo json_encode(['id' => $articuloId, 'tipo' => $tipo, 'marca' => $marca, 'modelo' => $modelo, 'serial' => $serial]);
 }
 
-function crearArticulo(\PDO $pdo, ?array $datos = null): void
+function crearArticulo(\PDO $pdo, int $ferreteriaId, ?array $datos = null): void
 {
     $datos ??= json_decode(file_get_contents('php://input'), true) ?: [];
 
@@ -82,6 +100,14 @@ function crearArticulo(\PDO $pdo, ?array $datos = null): void
     if (!$clienteId || !$tipo) {
         http_response_code(400);
         echo json_encode(['error' => 'cliente_id y tipo son requeridos']);
+        return;
+    }
+
+    $clienteStmt = $pdo->prepare('SELECT id FROM cliente WHERE id = ? AND ferreteria_id = ?');
+    $clienteStmt->execute([$clienteId, $ferreteriaId]);
+    if (!$clienteStmt->fetchColumn()) {
+        http_response_code(404);
+        echo json_encode(['error' => 'Cliente no encontrado']);
         return;
     }
 
@@ -116,7 +142,7 @@ function crearArticulo(\PDO $pdo, ?array $datos = null): void
     ]);
 }
 
-function listarArticulos(\PDO $pdo): void
+function listarArticulos(\PDO $pdo, int $ferreteriaId): void
 {
     // Filtrado opcional por cliente: /articulos.php?cliente_id=1
     // Esto es lo que permite el "historial por cliente" que pidió tu amigo.
@@ -128,18 +154,20 @@ function listarArticulos(\PDO $pdo): void
                     COALESCE((SELECT JSON_ARRAYAGG(JSON_OBJECT('id', ac.id, 'nombre', ac.nombre, 'descripcion', ac.descripcion)) FROM accesorio ac WHERE ac.articulo_id = a.id), JSON_ARRAY()) AS accesorios
              FROM articulo a
              JOIN cliente c ON c.id = a.cliente_id
-             WHERE a.cliente_id = ?
+             WHERE c.ferreteria_id = ? AND a.cliente_id = ?
              ORDER BY a.creado_en DESC"
         );
-        $stmt->execute([$clienteId]);
+        $stmt->execute([$ferreteriaId, $clienteId]);
     } else {
-        $stmt = $pdo->query(
+        $stmt = $pdo->prepare(
                 "SELECT a.*, c.nombre AS cliente_nombre,
                     COALESCE((SELECT JSON_ARRAYAGG(JSON_OBJECT('id', ac.id, 'nombre', ac.nombre, 'descripcion', ac.descripcion)) FROM accesorio ac WHERE ac.articulo_id = a.id), JSON_ARRAY()) AS accesorios
              FROM articulo a
              JOIN cliente c ON c.id = a.cliente_id
+             WHERE c.ferreteria_id = ?
              ORDER BY a.creado_en DESC"
         );
+        $stmt->execute([$ferreteriaId]);
     }
 
     echo json_encode($stmt->fetchAll());
