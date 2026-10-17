@@ -316,7 +316,9 @@ function PanelRecepcion() {
       if (ordenCreada) {
         abrirAvisoCreacion(ordenCreada, ventanaWhatsapp);
         // Primera factura: datos de ingreso, aún sin cotización.
-        descargarFacturaOrden({ orden: ordenCreada, sufijo: 'ingreso' }).catch(() => {});
+        descargarFacturaOrden({ orden: ordenCreada, sufijo: 'ingreso' }).catch((err) => {
+          setError(`La orden se creó, pero no se pudo generar su comprobante: ${err.message}`);
+        });
       } else if (ventanaWhatsapp) {
         ventanaWhatsapp.close();
       }

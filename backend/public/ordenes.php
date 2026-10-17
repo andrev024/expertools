@@ -9,6 +9,7 @@ use App\GeneradorCodigo;
 header('Content-Type: application/json; charset=utf-8');
 
 $usuarioAuth = Middleware::requireAuth(['recepcion', 'tecnico', 'admin']);
+$ferreteriaId = (int) $usuarioAuth->ferreteria_id;
 
 $pdo = Database::getConnection();
 $metodo = $_SERVER['REQUEST_METHOD'];
@@ -23,7 +24,7 @@ if ($metodo === 'POST') {
 } elseif ($metodo === 'PATCH') {
     actualizarUbicacion($pdo, $usuarioAuth);
 } elseif ($metodo === 'GET') {
-    listarOrdenes($pdo);
+    listarOrdenes($pdo, $ferreteriaId);
 } else {
     http_response_code(405);
     echo json_encode(['error' => 'Método no permitido']);
@@ -46,14 +47,57 @@ function crearOrden(\PDO $pdo, object $usuarioAuth): void
         return;
     }
 
-    $codigoSeguimiento = GeneradorCodigo::generarCodigoSeguimiento($pdo);
+    $stmtPropiedad = $pdo->prepare(
+        'SELECT c.id AS cliente_id
+         FROM articulo a
+         JOIN cliente c ON c.id = a.cliente_id
+         WHERE a.id = ? AND c.ferreteria_id = ?'
+    );
+    $stmtPropiedad->execute([$articuloId, (int) $usuarioAuth->ferreteria_id]);
+    $propiedadArticulo = $stmtPropiedad->fetch();
+    if (!$propiedadArticulo) {
+        http_response_code(404);
+        echo json_encode(['error' => 'Artículo no encontrado']);
+        return;
+    }
+
+    if ($cliente && !empty($cliente['id']) && (int) $cliente['id'] !== (int) $propiedadArticulo['cliente_id']) {
+        http_response_code(400);
+        echo json_encode(['error' => 'El cliente no corresponde al artículo']);
+        return;
+    }
+
+    if ($articulo && !empty($articulo['id']) && (int) $articulo['id'] !== (int) $articuloId) {
+        http_response_code(400);
+        echo json_encode(['error' => 'El artículo no corresponde a la orden']);
+        return;
+    }
+
+    if ($ordenOriginalId) {
+        $stmtOrdenOriginal = $pdo->prepare(
+            'SELECT os.id
+             FROM orden_servicio os
+             JOIN articulo a ON a.id = os.articulo_id
+             JOIN cliente c ON c.id = a.cliente_id
+             WHERE os.id = ? AND c.ferreteria_id = ?'
+        );
+        $stmtOrdenOriginal->execute([$ordenOriginalId, (int) $usuarioAuth->ferreteria_id]);
+        if (!$stmtOrdenOriginal->fetchColumn()) {
+            http_response_code(404);
+            echo json_encode(['error' => 'Orden original no encontrada']);
+            return;
+        }
+    }
 
     $pdo->beginTransaction();
 
     try {
+        $ferreteriaId = (int) $usuarioAuth->ferreteria_id;
+        $codigoSeguimiento = GeneradorCodigo::generarCodigoSeguimiento($pdo, $ferreteriaId);
+
         if ($cliente && !empty($cliente['id'])) {
             $stmtCliente = $pdo->prepare(
-                'UPDATE cliente SET nombre = ?, empresa = ?, correo = ?, telefono = ?, telefono_2 = ?, direccion = ?, cedula = ? WHERE id = ?'
+                'UPDATE cliente SET nombre = ?, empresa = ?, correo = ?, telefono = ?, telefono_2 = ?, direccion = ?, cedula = ? WHERE id = ? AND ferreteria_id = ?'
             );
             $stmtCliente->execute([
                 trim((string) ($cliente['nombre'] ?? '')) ?: null,
@@ -64,17 +108,24 @@ function crearOrden(\PDO $pdo, object $usuarioAuth): void
                 trim((string) ($cliente['direccion'] ?? '')) ?: null,
                 trim((string) ($cliente['cedula'] ?? '')) ?: null,
                 $cliente['id'],
+                (int) $usuarioAuth->ferreteria_id,
             ]);
         }
 
         if ($articulo && !empty($articulo['id'])) {
-            $stmtArticulo = $pdo->prepare('UPDATE articulo SET tipo = ?, marca = ?, modelo = ?, serial = ? WHERE id = ?');
+            $stmtArticulo = $pdo->prepare(
+                'UPDATE articulo a
+                 JOIN cliente c ON c.id = a.cliente_id
+                 SET a.tipo = ?, a.marca = ?, a.modelo = ?, a.serial = ?
+                 WHERE a.id = ? AND c.ferreteria_id = ?'
+            );
             $stmtArticulo->execute([
                 trim((string) ($articulo['tipo'] ?? '')),
                 trim((string) ($articulo['marca'] ?? '')) ?: null,
                 trim((string) ($articulo['modelo'] ?? '')) ?: null,
                 trim((string) ($articulo['serial'] ?? '')) ?: null,
                 $articulo['id'],
+                (int) $usuarioAuth->ferreteria_id,
             ]);
             $pdo->prepare('DELETE FROM accesorio WHERE articulo_id = ?')->execute([$articulo['id']]);
             $stmtAccesorio = $pdo->prepare('INSERT INTO accesorio (articulo_id, nombre, descripcion) VALUES (?, ?, ?)');
@@ -91,10 +142,10 @@ function crearOrden(\PDO $pdo, object $usuarioAuth): void
         // ANSI_QUOTES) las interpretan como nombre de columna en vez de texto.
         $stmt = $pdo->prepare(
             "INSERT INTO orden_servicio
-                     (codigo_seguimiento, articulo_id, tipo, orden_original_id, estado_actual, ubicacion_actual, fecha_ingreso)
-                 VALUES (?, ?, ?, ?, 'recibido', ?, NOW())"
+                     (ferreteria_id, codigo_seguimiento, articulo_id, tipo, orden_original_id, estado_actual, ubicacion_actual, fecha_ingreso)
+                 VALUES (?, ?, ?, ?, ?, 'recibido', ?, NOW())"
         );
-          $stmt->execute([$codigoSeguimiento, $articuloId, $tipo, $ordenOriginalId, $ubicacion ?: null]);
+        $stmt->execute([$ferreteriaId, $codigoSeguimiento, $articuloId, $tipo, $ordenOriginalId, $ubicacion ?: null]);
         $ordenId = $pdo->lastInsertId();
 
         $stmtHistorial = $pdo->prepare(
@@ -130,10 +181,10 @@ function crearOrden(\PDO $pdo, object $usuarioAuth): void
     }
 }
 
-function listarOrdenes(\PDO $pdo): void
+function listarOrdenes(\PDO $pdo, int $ferreteriaId): void
 {
     try {
-        $stmt = $pdo->query(
+        $stmt = $pdo->prepare(
                 "SELECT os.id, os.codigo_seguimiento, os.tipo, os.estado_actual, os.fecha_ingreso,
                     COALESCE((SELECT MAX(h.fecha) FROM historial_estado h WHERE h.orden_id = os.id), os.fecha_ingreso) AS estado_desde,
                     a.tipo AS articulo_tipo, a.marca, a.modelo,
@@ -147,8 +198,10 @@ function listarOrdenes(\PDO $pdo): void
              FROM orden_servicio os
              JOIN articulo a ON a.id = os.articulo_id
              JOIN cliente c ON c.id = a.cliente_id
+             WHERE c.ferreteria_id = ?
              ORDER BY os.fecha_ingreso ASC"
         );
+        $stmt->execute([$ferreteriaId]);
 
         $ordenes = $stmt->fetchAll();
         foreach ($ordenes as &$orden) {
@@ -180,8 +233,14 @@ function actualizarUbicacion(\PDO $pdo, object $usuarioAuth): void
         return;
     }
 
-    $stmt = $pdo->prepare('SELECT estado_actual FROM orden_servicio WHERE id = ?');
-    $stmt->execute([$ordenId]);
+    $stmt = $pdo->prepare(
+        'SELECT os.estado_actual
+         FROM orden_servicio os
+         JOIN articulo a ON a.id = os.articulo_id
+         JOIN cliente c ON c.id = a.cliente_id
+         WHERE os.id = ? AND c.ferreteria_id = ?'
+    );
+    $stmt->execute([$ordenId, (int) $usuarioAuth->ferreteria_id]);
     $orden = $stmt->fetch();
     if (!$orden) {
         http_response_code(404);

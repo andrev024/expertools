@@ -7,6 +7,7 @@ use App\Database;
 header('Content-Type: application/json; charset=utf-8');
 
 $codigo = trim($_GET['codigo'] ?? '');
+$ferreteriaSlug = trim($_GET['ferreteria'] ?? '');
 
 if (!$codigo) {
     http_response_code(400);
@@ -14,22 +15,59 @@ if (!$codigo) {
     exit;
 }
 
-// Permitimos que el cliente busque solo con el consecutivo (ej. "0600"),
-// sin tener que escribir el prefijo "OT-A-" completo.
+$pdo = Database::getConnection();
+
+// Los códigos numéricos se mantienen para compatibilidad; si el enlace incluye
+// una ferretería, usamos el prefijo configurado para esa cuenta.
 if (preg_match('/^\d+$/', $codigo)) {
-    $codigo = 'OT-A-' . str_pad($codigo, 4, '0', STR_PAD_LEFT);
+    if ($ferreteriaSlug !== '') {
+        $stmtPrefijo = $pdo->prepare('SELECT codigo_prefijo FROM ferreteria WHERE slug = ?');
+        $stmtPrefijo->execute([$ferreteriaSlug]);
+        $prefijo = $stmtPrefijo->fetchColumn();
+        if (!$prefijo) {
+            http_response_code(404);
+            echo json_encode(['error' => 'Ferretería no encontrada']);
+            exit;
+        }
+    } else {
+        $prefijo = $pdo->query('SELECT codigo_prefijo FROM ferreteria WHERE id = 1')->fetchColumn() ?: 'OT-A-';
+    }
+    $codigo = $prefijo . str_pad($codigo, 4, '0', STR_PAD_LEFT);
 } else {
     $codigo = strtoupper($codigo);
 }
 
-$pdo = Database::getConnection();
+if ($ferreteriaSlug !== '') {
+    $stmt = $pdo->prepare(
+        'SELECT os.id, os.codigo_seguimiento, os.estado_actual, os.fecha_ingreso,
+                os.fecha_entrega, f.slug AS ferreteria_slug,
+                f.nombre_comercial AS ferreteria_nombre
+         FROM orden_servicio os
+         JOIN ferreteria f ON f.id = os.ferreteria_id
+         WHERE os.codigo_seguimiento = ? AND f.slug = ?'
+    );
+    $stmt->execute([$codigo, $ferreteriaSlug]);
+    $ordenes = $stmt->fetchAll();
+} else {
+    $stmt = $pdo->prepare(
+        'SELECT os.id, os.codigo_seguimiento, os.estado_actual, os.fecha_ingreso,
+                os.fecha_entrega, f.slug AS ferreteria_slug,
+                f.nombre_comercial AS ferreteria_nombre
+         FROM orden_servicio os
+         JOIN ferreteria f ON f.id = os.ferreteria_id
+         WHERE os.codigo_seguimiento = ?
+         LIMIT 2'
+    );
+    $stmt->execute([$codigo]);
+    $ordenes = $stmt->fetchAll();
+}
 
-$stmt = $pdo->prepare(
-    'SELECT id, codigo_seguimiento, estado_actual, fecha_ingreso, fecha_entrega
-     FROM orden_servicio WHERE codigo_seguimiento = ?'
-);
-$stmt->execute([$codigo]);
-$orden = $stmt->fetch();
+if (count($ordenes) > 1) {
+    http_response_code(409);
+    echo json_encode(['error' => 'Este código existe en varias ferreterías. Usa el enlace completo recibido.']);
+    exit;
+}
+$orden = $ordenes[0] ?? null;
 
 if (!$orden) {
     http_response_code(404);
@@ -110,6 +148,8 @@ foreach ($historial as $paso) {
 
 echo json_encode([
     'codigo_seguimiento' => $orden['codigo_seguimiento'],
+    'ferreteria_slug' => $orden['ferreteria_slug'],
+    'ferreteria_nombre' => $orden['ferreteria_nombre'],
     'estado_actual' => $orden['estado_actual'] === 'chatarra'
         ? 'En diagnóstico'
         : ($mapaEstadosPublicos[$orden['estado_actual']] ?? $orden['estado_actual']),

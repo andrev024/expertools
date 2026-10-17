@@ -8,6 +8,7 @@ use App\Middleware;
 header('Content-Type: application/json; charset=utf-8');
 
 $usuarioAuth = Middleware::requireAuth(['tecnico', 'recepcion', 'admin']);
+$ferreteriaId = (int) $usuarioAuth->ferreteria_id;
 
 $pdo = Database::getConnection();
 $metodo = $_SERVER['REQUEST_METHOD'];
@@ -19,13 +20,13 @@ if ($metodo === 'POST') {
 } elseif ($metodo === 'PATCH') {
     responderCotizacion($pdo, $usuarioAuth);
 } elseif ($metodo === 'GET') {
-    obtenerCotizacion($pdo);
+    obtenerCotizacion($pdo, $ferreteriaId);
 } else {
     http_response_code(405);
     echo json_encode(['error' => 'Método no permitido']);
 }
 
-function obtenerCotizacion(\PDO $pdo): void
+function obtenerCotizacion(\PDO $pdo, int $ferreteriaId): void
 {
     $ordenId = $_GET['orden_id'] ?? null;
     if (!$ordenId) {
@@ -35,10 +36,15 @@ function obtenerCotizacion(\PDO $pdo): void
     }
 
     $stmt = $pdo->prepare(
-        'SELECT repuestos, dictamen, monto, subtotal, abono, estado
-         FROM cotizacion WHERE orden_id = ? ORDER BY id DESC LIMIT 1'
+        'SELECT co.repuestos, co.dictamen, co.monto, co.subtotal, co.abono, co.estado
+         FROM cotizacion co
+         JOIN orden_servicio os ON os.id = co.orden_id
+         JOIN articulo a ON a.id = os.articulo_id
+         JOIN cliente c ON c.id = a.cliente_id
+         WHERE co.orden_id = ? AND c.ferreteria_id = ?
+         ORDER BY co.id DESC LIMIT 1'
     );
-    $stmt->execute([$ordenId]);
+    $stmt->execute([$ordenId, $ferreteriaId]);
     $cotizacion = $stmt->fetch();
 
     if (!$cotizacion) {
@@ -87,8 +93,15 @@ function registrarCotizacion(\PDO $pdo, object $usuarioAuth): void
     $pdo->beginTransaction();
 
     try {
-        $stmt = $pdo->prepare('SELECT estado_actual FROM orden_servicio WHERE id = ? FOR UPDATE');
-        $stmt->execute([$ordenId]);
+        $stmt = $pdo->prepare(
+            'SELECT os.estado_actual
+             FROM orden_servicio os
+             JOIN articulo a ON a.id = os.articulo_id
+             JOIN cliente c ON c.id = a.cliente_id
+             WHERE os.id = ? AND c.ferreteria_id = ?
+             FOR UPDATE'
+        );
+        $stmt->execute([$ordenId, (int) $usuarioAuth->ferreteria_id]);
         $orden = $stmt->fetch();
 
         if (!$orden || $orden['estado_actual'] !== 'en_diagnostico') {
@@ -187,9 +200,14 @@ function responderCotizacion(\PDO $pdo, object $usuarioAuth): void
 
     try {
         $stmt = $pdo->prepare(
-            'SELECT id, estado_actual FROM orden_servicio WHERE id = ? FOR UPDATE'
+            'SELECT os.id, os.estado_actual
+             FROM orden_servicio os
+             JOIN articulo a ON a.id = os.articulo_id
+             JOIN cliente c ON c.id = a.cliente_id
+             WHERE os.id = ? AND c.ferreteria_id = ?
+             FOR UPDATE'
         );
-        $stmt->execute([$ordenId]);
+        $stmt->execute([$ordenId, (int) $usuarioAuth->ferreteria_id]);
         $orden = $stmt->fetch();
 
         if (!$orden) {
@@ -212,8 +230,16 @@ function responderCotizacion(\PDO $pdo, object $usuarioAuth): void
         }
 
         $estadoCotizacion = $respuesta === 'aprobada' ? 'aprobada' : 'rechazada';
-        $stmtAbono = $pdo->prepare('SELECT abono FROM cotizacion WHERE orden_id = ? ORDER BY id DESC LIMIT 1');
-        $stmtAbono->execute([$ordenId]);
+        $stmtAbono = $pdo->prepare(
+            'SELECT co.abono
+             FROM cotizacion co
+             JOIN orden_servicio os ON os.id = co.orden_id
+             JOIN articulo a ON a.id = os.articulo_id
+             JOIN cliente c ON c.id = a.cliente_id
+             WHERE co.orden_id = ? AND c.ferreteria_id = ?
+             ORDER BY co.id DESC LIMIT 1'
+        );
+        $stmtAbono->execute([$ordenId, (int) $usuarioAuth->ferreteria_id]);
         $abonoRequerido = (float) ($stmtAbono->fetchColumn() ?: 0);
         $nuevoEstadoOrden = $respuesta === 'aprobada'
             ? ($abonoRequerido > 0
@@ -279,9 +305,15 @@ function editarRepuestos(\PDO $pdo, object $usuarioAuth): void
 
     try {
         $stmt = $pdo->prepare(
-            'SELECT id, abono FROM cotizacion WHERE orden_id = ? ORDER BY id DESC LIMIT 1 FOR UPDATE'
+            'SELECT co.id, co.abono
+             FROM cotizacion co
+             JOIN orden_servicio os ON os.id = co.orden_id
+             JOIN articulo a ON a.id = os.articulo_id
+             JOIN cliente c ON c.id = a.cliente_id
+             WHERE co.orden_id = ? AND c.ferreteria_id = ?
+             ORDER BY co.id DESC LIMIT 1 FOR UPDATE'
         );
-        $stmt->execute([$ordenId]);
+        $stmt->execute([$ordenId, (int) $usuarioAuth->ferreteria_id]);
         $cotizacion = $stmt->fetch();
 
         if (!$cotizacion) {
@@ -326,8 +358,14 @@ function editarRepuestos(\PDO $pdo, object $usuarioAuth): void
         $comentario = 'Repuestos actualizados. Nuevo total: $' . number_format($monto, 0, ',', '.')
             . ($detalleRepuestos ? '. Repuestos: ' . implode(', ', $detalleRepuestos) : '');
 
-        $stmtOrden = $pdo->prepare('SELECT estado_actual FROM orden_servicio WHERE id = ?');
-        $stmtOrden->execute([$ordenId]);
+        $stmtOrden = $pdo->prepare(
+            'SELECT os.estado_actual
+             FROM orden_servicio os
+             JOIN articulo a ON a.id = os.articulo_id
+             JOIN cliente c ON c.id = a.cliente_id
+             WHERE os.id = ? AND c.ferreteria_id = ?'
+        );
+        $stmtOrden->execute([$ordenId, (int) $usuarioAuth->ferreteria_id]);
         $estadoActual = $stmtOrden->fetchColumn() ?: 'en_reparacion';
 
         $pdo->prepare(

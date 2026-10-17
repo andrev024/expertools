@@ -8,13 +8,15 @@ RUN docker-php-ext-install pdo pdo_mysql
 RUN apt-get update && apt-get install -y libzip-dev unzip \
     && docker-php-ext-install zip \
     && rm -rf /var/lib/apt/lists/*
+
+RUN printf 'upload_max_filesize=3M\npost_max_size=4M\n' > /usr/local/etc/php/conf.d/uploads.ini
  
 # Instala Composer dentro de la imagen
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
  
 WORKDIR /var/www/html
  
-COPY composer.json ./
+COPY composer.json composer.lock ./
 RUN composer install --no-interaction --no-dev --optimize-autoloader
  
 COPY . .

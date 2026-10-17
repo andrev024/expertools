@@ -1,29 +1,21 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { apiFetch } from '../api';
+import { apiFetch, apiFetchBlob } from '../api';
 import { formatearEstado, formatearTipoOrden } from './textoUI';
-import { enlaceSeguimiento, ENLACE_UBICACION, ENLACE_INSTAGRAM } from './whatsapp';
-
-const LOGO_URL = '/logo-expertools.png';
+import { enlaceSeguimiento } from './whatsapp';
 
 function formatearMoneda(valor) {
   return `$${Number(valor || 0).toLocaleString('es-CO')}`;
 }
 
-// El logo se carga como data URL porque jsPDF no puede usar una URL relativa directamente.
 async function cargarLogoDataUrl() {
-  try {
-    const respuesta = await fetch(LOGO_URL);
-    const blob = await respuesta.blob();
-    return await new Promise((resolve, reject) => {
-      const lector = new FileReader();
-      lector.onload = () => resolve(lector.result);
-      lector.onerror = reject;
-      lector.readAsDataURL(blob);
-    });
-  } catch {
-    return null;
-  }
+  const blob = await apiFetchBlob('marca_logo.php');
+  return new Promise((resolve, reject) => {
+    const lector = new FileReader();
+    lector.onload = () => resolve(lector.result);
+    lector.onerror = reject;
+    lector.readAsDataURL(blob);
+  });
 }
 
 // Trae la cotización más reciente de una orden, o null si aún no tiene (no rompe el flujo).
@@ -39,25 +31,30 @@ export async function obtenerCotizacionOrden(ordenId) {
 // agrega la sección de diagnóstico y detalle de repuestos con el total y abono.
 export async function generarFacturaOrdenPdf({ orden, cotizacion }) {
   const doc = new jsPDF();
-  const logo = await cargarLogoDataUrl();
+  const marca = await apiFetch('marca.php');
+  const logo = marca.tiene_logo ? await cargarLogoDataUrl() : null;
   const margenX = 15;
   let y = 15;
 
   if (logo) {
-    try { doc.addImage(logo, 'PNG', margenX, y, 26, 26); } catch { /* formato de imagen no soportado, se omite */ }
+    doc.addImage(logo, logo.startsWith('data:image/jpeg') ? 'JPEG' : 'PNG', margenX, y, 26, 26);
   }
   const xTitulo = logo ? margenX + 32 : margenX;
+  const anchoTitulo = 180 - (xTitulo - margenX);
 
-  doc.setFontSize(16);
+  doc.setFontSize(15);
   doc.setFont(undefined, 'bold');
-  doc.text('Expertools - Comprobante de servicio', xTitulo, y + 8);
+  const lineasNombre = doc.splitTextToSize(marca.nombre_comercial, anchoTitulo);
+  doc.text(lineasNombre, xTitulo, y + 7);
   doc.setFont(undefined, 'normal');
   doc.setFontSize(10);
-  doc.text(`Código de seguimiento: ${orden.codigo_seguimiento || ''}`, xTitulo, y + 16);
-  doc.text(`Estado actual: ${formatearEstado(orden.estado_actual)}`, xTitulo, y + 22);
-  doc.text(`Fecha de emisión: ${new Date().toLocaleString('es-CO', { timeZone: 'America/Bogota' })}`, xTitulo, y + 28);
+  const yDatos = y + 9 + lineasNombre.length * 6;
+  doc.text('Comprobante de servicio', xTitulo, yDatos);
+  doc.text(`Código de seguimiento: ${orden.codigo_seguimiento || ''}`, xTitulo, yDatos + 6);
+  doc.text(`Estado actual: ${formatearEstado(orden.estado_actual)}`, xTitulo, yDatos + 12);
+  doc.text(`Fecha de emisión: ${new Date().toLocaleString('es-CO', { timeZone: 'America/Bogota' })}`, xTitulo, yDatos + 18);
 
-  y += 36;
+  y = Math.max(y + 36, yDatos + 24);
   doc.setDrawColor(200);
   doc.line(margenX, y, 195, y);
   y += 8;
@@ -144,8 +141,14 @@ export async function generarFacturaOrdenPdf({ orden, cotizacion }) {
   doc.setFontSize(9);
   doc.setTextColor(90);
   doc.text(`Seguimiento en línea: ${enlaceSeguimiento(orden.codigo_seguimiento)}`, margenX, y); y += 5;
-  doc.text(`Instagram: ${ENLACE_INSTAGRAM}`, margenX, y); y += 5;
-  doc.text(`Ubicación: ${ENLACE_UBICACION}`, margenX, y);
+  if (marca.telefono) {
+    doc.text(`Teléfono: ${marca.telefono}`, margenX, y);
+    y += 5;
+  }
+  if (marca.direccion) {
+    const lineasDireccion = doc.splitTextToSize(`Dirección: ${marca.direccion}`, 180);
+    doc.text(lineasDireccion, margenX, y);
+  }
 
   return doc;
 }

@@ -33,8 +33,15 @@ if (!$ordenId || !$nuevoEstado) {
 $pdo->beginTransaction();
 
 try {
-    $stmt = $pdo->prepare('SELECT estado_actual FROM orden_servicio WHERE id = ? FOR UPDATE');
-    $stmt->execute([$ordenId]);
+    $stmt = $pdo->prepare(
+        'SELECT os.estado_actual
+         FROM orden_servicio os
+         JOIN articulo a ON a.id = os.articulo_id
+         JOIN cliente c ON c.id = a.cliente_id
+         WHERE os.id = ? AND c.ferreteria_id = ?
+         FOR UPDATE'
+    );
+    $stmt->execute([$ordenId, (int) $usuarioAuth->ferreteria_id]);
     $orden = $stmt->fetch();
 
     if (!$orden) {

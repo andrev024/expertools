@@ -8,6 +8,7 @@ use App\Middleware;
 header('Content-Type: application/json');
 
 $usuarioAuth = Middleware::requireAuth(['recepcion', 'admin']);
+$ferreteriaId = (int) $usuarioAuth->ferreteria_id;
 
 $pdo = Database::getConnection();
 $metodo = $_SERVER['REQUEST_METHOD'];
@@ -15,22 +16,22 @@ $metodo = $_SERVER['REQUEST_METHOD'];
 if ($metodo === 'POST') {
     $datos = json_decode(file_get_contents('php://input'), true) ?: [];
     if (($datos['operacion'] ?? '') === 'actualizar' || !empty($datos['cliente_id'])) {
-        actualizarCliente($pdo, $datos);
+        actualizarCliente($pdo, $ferreteriaId, $datos);
     } else {
-        crearCliente($pdo, $datos);
+        crearCliente($pdo, $ferreteriaId, $datos);
     }
 } elseif ($metodo === 'GET') {
-    listarClientes($pdo);
+    listarClientes($pdo, $ferreteriaId);
 } elseif ($metodo === 'PATCH') {
-    actualizarCliente($pdo);
+    actualizarCliente($pdo, $ferreteriaId);
 } elseif ($metodo === 'DELETE') {
-    eliminarCliente($pdo);
+    eliminarCliente($pdo, $ferreteriaId);
 } else {
     http_response_code(405);
     echo json_encode(['error' => 'Método no permitido']);
 }
 
-function eliminarCliente(\PDO $pdo): void
+function eliminarCliente(\PDO $pdo, int $ferreteriaId): void
 {
     $clienteId = $_GET['cliente_id'] ?? null;
 
@@ -40,8 +41,8 @@ function eliminarCliente(\PDO $pdo): void
         return;
     }
 
-    $clienteStmt = $pdo->prepare('SELECT id FROM cliente WHERE id = ?');
-    $clienteStmt->execute([$clienteId]);
+    $clienteStmt = $pdo->prepare('SELECT id FROM cliente WHERE id = ? AND ferreteria_id = ?');
+    $clienteStmt->execute([$clienteId, $ferreteriaId]);
     if (!$clienteStmt->fetchColumn()) {
         http_response_code(404);
         echo json_encode(['error' => 'Cliente no encontrado']);
@@ -102,7 +103,7 @@ function eliminarCliente(\PDO $pdo): void
     echo json_encode(['id' => $clienteId, 'eliminado' => true]);
 }
 
-function actualizarCliente(\PDO $pdo, ?array $datos = null): void
+function actualizarCliente(\PDO $pdo, int $ferreteriaId, ?array $datos = null): void
 {
     $datos ??= json_decode(file_get_contents('php://input'), true) ?: [];
     $clienteId = $datos['cliente_id'] ?? null;
@@ -120,24 +121,24 @@ function actualizarCliente(\PDO $pdo, ?array $datos = null): void
         return;
     }
 
-    $clienteStmt = $pdo->prepare('SELECT id FROM cliente WHERE id = ?');
-    $clienteStmt->execute([$clienteId]);
+    $clienteStmt = $pdo->prepare('SELECT id FROM cliente WHERE id = ? AND ferreteria_id = ?');
+    $clienteStmt->execute([$clienteId, $ferreteriaId]);
     if (!$clienteStmt->fetchColumn()) {
         http_response_code(404);
         echo json_encode(['error' => 'Cliente no encontrado']);
         return;
     }
 
-    $duplicado = buscarClienteDuplicado($pdo, $correo, $telefono, $telefono2, $clienteId);
+    $duplicado = buscarClienteDuplicado($pdo, $ferreteriaId, $correo, $telefono, $telefono2, (int) $clienteId);
     if ($duplicado) {
         http_response_code(409);
         echo json_encode(['error' => 'Ya existe otro cliente registrado con ese teléfono o correo.']);
         return;
     }
 
-    $stmt = $pdo->prepare('UPDATE cliente SET nombre = ?, empresa = ?, correo = ?, telefono = ?, telefono_2 = ?, direccion = ?, cedula = ? WHERE id = ?');
+    $stmt = $pdo->prepare('UPDATE cliente SET nombre = ?, empresa = ?, correo = ?, telefono = ?, telefono_2 = ?, direccion = ?, cedula = ? WHERE id = ? AND ferreteria_id = ?');
     try {
-        $stmt->execute([$nombre ?: null, $empresa ?: null, $correo ?: null, $telefono ?: null, $telefono2 ?: null, $direccion ?: null, $cedula ?: null, $clienteId]);
+        $stmt->execute([$nombre ?: null, $empresa ?: null, $correo ?: null, $telefono ?: null, $telefono2 ?: null, $direccion ?: null, $cedula ?: null, $clienteId, $ferreteriaId]);
     } catch (\PDOException $e) {
         error_log('Error actualizando cliente ' . $clienteId . ': ' . $e->getMessage());
         http_response_code(500);
@@ -147,7 +148,7 @@ function actualizarCliente(\PDO $pdo, ?array $datos = null): void
     echo json_encode(['id' => $clienteId, 'nombre' => $nombre, 'empresa' => $empresa, 'correo' => $correo, 'telefono' => $telefono, 'telefono_2' => $telefono2, 'direccion' => $direccion, 'cedula' => $cedula]);
 }
 
-function crearCliente(\PDO $pdo, ?array $datos = null): void
+function crearCliente(\PDO $pdo, int $ferreteriaId, ?array $datos = null): void
 {
     $datos ??= json_decode(file_get_contents('php://input'), true) ?: [];
 
@@ -165,7 +166,7 @@ function crearCliente(\PDO $pdo, ?array $datos = null): void
         return;
     }
 
-    $duplicado = buscarClienteDuplicado($pdo, $correo, $telefono, $telefono2);
+    $duplicado = buscarClienteDuplicado($pdo, $ferreteriaId, $correo, $telefono, $telefono2);
     if ($duplicado) {
         http_response_code(409);
         echo json_encode(['error' => 'Ya existe otro cliente registrado con ese teléfono o correo.']);
@@ -173,9 +174,9 @@ function crearCliente(\PDO $pdo, ?array $datos = null): void
     }
 
     $stmt = $pdo->prepare(
-        'INSERT INTO cliente (nombre, empresa, correo, telefono, telefono_2, direccion, cedula) VALUES (?, ?, ?, ?, ?, ?, ?)'
+        'INSERT INTO cliente (ferreteria_id, nombre, empresa, correo, telefono, telefono_2, direccion, cedula) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
     );
-    $stmt->execute([$nombre, $empresa, $correo, $telefono, $telefono2, $direccion, $cedula]);
+    $stmt->execute([$ferreteriaId, $nombre, $empresa, $correo, $telefono, $telefono2, $direccion, $cedula]);
 
     http_response_code(201);
     echo json_encode([
@@ -190,7 +191,7 @@ function crearCliente(\PDO $pdo, ?array $datos = null): void
 }
 
 // Revisa si ya existe otro cliente con el mismo correo o telefono (en cualquiera de los 2 campos de telefono).
-function buscarClienteDuplicado(\PDO $pdo, ?string $correo, ?string $telefono, ?string $telefono2, ?int $excluirClienteId = null): bool
+function buscarClienteDuplicado(\PDO $pdo, int $ferreteriaId, ?string $correo, ?string $telefono, ?string $telefono2, ?int $excluirClienteId = null): bool
 {
     $correo = trim((string) $correo);
     $telefono = trim((string) $telefono);
@@ -216,7 +217,8 @@ function buscarClienteDuplicado(\PDO $pdo, ?string $correo, ?string $telefono, ?
         return false;
     }
 
-    $sql = 'SELECT id FROM cliente WHERE (' . implode(' OR ', $condiciones) . ')';
+    $sql = 'SELECT id FROM cliente WHERE ferreteria_id = ? AND (' . implode(' OR ', $condiciones) . ')';
+    array_unshift($parametros, $ferreteriaId);
     if ($excluirClienteId !== null) {
         $sql .= ' AND id != ?';
         $parametros[] = $excluirClienteId;
@@ -228,7 +230,7 @@ function buscarClienteDuplicado(\PDO $pdo, ?string $correo, ?string $telefono, ?
     return (bool) $stmt->fetchColumn();
 }
 
-function listarClientes(\PDO $pdo): void
+function listarClientes(\PDO $pdo, int $ferreteriaId): void
 {
     // Busqueda opcional: /clientes.php?buscar=juan
     $buscar = $_GET['buscar'] ?? null;
@@ -236,13 +238,15 @@ function listarClientes(\PDO $pdo): void
     if ($buscar) {
         $stmt = $pdo->prepare(
             'SELECT * FROM cliente
-             WHERE nombre LIKE ? OR empresa LIKE ? OR correo LIKE ? OR telefono LIKE ? OR cedula LIKE ?
+             WHERE ferreteria_id = ?
+               AND (nombre LIKE ? OR empresa LIKE ? OR correo LIKE ? OR telefono LIKE ? OR cedula LIKE ?)
              ORDER BY COALESCE(NULLIF(nombre, \'\'), empresa)'
         );
         $like = "%{$buscar}%";
-        $stmt->execute([$like, $like, $like, $like, $like]);
+        $stmt->execute([$ferreteriaId, $like, $like, $like, $like, $like]);
     } else {
-        $stmt = $pdo->query('SELECT * FROM cliente ORDER BY nombre');
+        $stmt = $pdo->prepare('SELECT * FROM cliente WHERE ferreteria_id = ? ORDER BY nombre');
+        $stmt->execute([$ferreteriaId]);
     }
 
     echo json_encode($stmt->fetchAll());

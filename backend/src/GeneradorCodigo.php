@@ -4,47 +4,48 @@ namespace App;
 
 class GeneradorCodigo
 {
-    private const PREFIJO = 'OT-A-';
-    private const SECUENCIA_INICIAL = 600;
-
-    private static ?int $secuencia = null;
-
-    // Genera un codigo tipo OT-A-0600: prefijo fijo + consecutivo de 4 digitos.
-    // Si se recibe una conexion, el consecutivo se calcula a partir de la BD
-    // para que persista entre peticiones (PHP no conserva estado en memoria).
-    public static function generarCodigoSeguimiento(?\PDO $pdo = null): string
+    public static function generarCodigoSeguimiento(\PDO $pdo, int $ferreteriaId): string
     {
-        if ($pdo !== null) {
-            $siguiente = self::obtenerSiguienteDesdeBd($pdo);
-            return self::PREFIJO . str_pad((string) $siguiente, 4, '0', STR_PAD_LEFT);
+        if (!$pdo->inTransaction()) {
+            throw new \LogicException('El consecutivo debe generarse dentro de una transacción');
         }
 
-        if (self::$secuencia === null) {
-            self::$secuencia = self::SECUENCIA_INICIAL;
-        } else {
-            self::$secuencia++;
-        }
-
-        return self::PREFIJO . str_pad((string) self::$secuencia, 4, '0', STR_PAD_LEFT);
-    }
-
-    private static function obtenerSiguienteDesdeBd(\PDO $pdo): int
-    {
         $stmt = $pdo->prepare(
-            "SELECT MAX(CAST(SUBSTRING(codigo_seguimiento, ?) AS UNSIGNED))
-             FROM orden_servicio
-             WHERE codigo_seguimiento LIKE ?"
+            'SELECT codigo_prefijo, siguiente_consecutivo
+             FROM ferreteria
+             WHERE id = ?
+             FOR UPDATE'
         );
-        $stmt->execute([strlen(self::PREFIJO) + 1, self::PREFIJO . '%']);
-        $ultimo = $stmt->fetchColumn();
+        $stmt->execute([$ferreteriaId]);
+        $ferreteria = $stmt->fetch();
+        if (!$ferreteria) {
+            throw new \RuntimeException('No se encontró la ferretería para generar el código');
+        }
 
-        return $ultimo !== null && $ultimo !== false
-            ? ((int) $ultimo) + 1
-            : self::SECUENCIA_INICIAL;
+        $consecutivo = (int) $ferreteria['siguiente_consecutivo'];
+        if ($consecutivo < 1) {
+            throw new \RuntimeException('El consecutivo configurado para la ferretería no es válido');
+        }
+
+        $update = $pdo->prepare(
+            'UPDATE ferreteria SET siguiente_consecutivo = ? WHERE id = ?'
+        );
+        $update->execute([$consecutivo + 1, $ferreteriaId]);
+
+        return self::formatearCodigo((string) $ferreteria['codigo_prefijo'], $consecutivo);
     }
 
-    public static function resetSecuencia(): void
+    public static function formatearCodigo(string $prefijo, int $consecutivo): string
     {
-        self::$secuencia = null;
+        if ($prefijo === '' || $consecutivo < 1) {
+            throw new \InvalidArgumentException('El prefijo y el consecutivo deben ser válidos');
+        }
+
+        $codigo = $prefijo . str_pad((string) $consecutivo, 4, '0', STR_PAD_LEFT);
+        if (strlen($codigo) > 20) {
+            throw new \InvalidArgumentException('El código excede el tamaño permitido por la base de datos');
+        }
+
+        return $codigo;
     }
 }

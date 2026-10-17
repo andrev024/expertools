@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { apiFetch } from '../api';
 import { formatearEstado } from '../utils/textoUI';
 import Footer from './Footer';
@@ -11,12 +11,14 @@ function Seguimiento({ embebido = false }) {
   const [error, setError] = useState('');
   const [cargando, setCargando] = useState(false);
 
-  const buscarPorCodigo = useCallback(async (codigoBuscado) => {
+  const buscarPorCodigo = useCallback(async (codigoBuscado, ferreteriaSlug = '') => {
     setError('');
     setResultado(null);
     setCargando(true);
     try {
-      const datos = await apiFetch(`seguimiento.php?codigo=${encodeURIComponent(codigoBuscado)}`);
+      const parametros = new URLSearchParams({ codigo: codigoBuscado });
+      if (ferreteriaSlug) parametros.set('ferreteria', ferreteriaSlug);
+      const datos = await apiFetch(`seguimiento.php?${parametros.toString()}`);
       setResultado(datos);
     } catch (err) {
       setError(err.message);
@@ -29,7 +31,8 @@ function Seguimiento({ embebido = false }) {
   useEffect(() => {
     const codigoUrl = searchParams.get('codigo');
     if (codigoUrl) {
-      const temporizador = setTimeout(() => buscarPorCodigo(codigoUrl), 0);
+      const ferreteriaSlug = searchParams.get('ferreteria') || '';
+      const temporizador = setTimeout(() => buscarPorCodigo(codigoUrl, ferreteriaSlug), 0);
       return () => clearTimeout(temporizador);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -37,7 +40,7 @@ function Seguimiento({ embebido = false }) {
 
   async function buscarOrden(e) {
     e.preventDefault();
-    buscarPorCodigo(codigo);
+    buscarPorCodigo(codigo, searchParams.get('ferreteria') || '');
   }
 
   return (
@@ -52,13 +55,13 @@ function Seguimiento({ embebido = false }) {
           <div className="col-12">
             <span className="eyebrow text-uppercase fw-semibold">Seguimiento en tiempo real</span>
             <h1 className="display-5 fw-semibold mt-2 mb-3">Seguimiento de tu reparación</h1>
-            <p className="page-lead text-secondary mb-4">Ingresa el código que te dieron en recepción para conocer el estado de tu artículo. Puedes escribirlo completo (OT-A-0600) o solo el número (0600).</p>
+            <p className="page-lead text-secondary mb-4">Ingresa el código que te dieron en recepción para consultar tu artículo. Si el código se repite entre ferreterías, usa el enlace que te compartieron.</p>
 
             <form onSubmit={buscarOrden} className="tracking-form input-group mb-4">
               <input
                 className="form-control"
                 type="text"
-                placeholder="Ej: OT-A-0600 o 0600"
+                placeholder="Ej: OT-A-0600"
                 value={codigo}
                 onChange={(e) => setCodigo(e.target.value)}
                 required
@@ -74,6 +77,7 @@ function Seguimiento({ embebido = false }) {
                 <div className="card-body p-4">
                   <div className="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
                     <div>
+                      {resultado.ferreteria_nombre && <span className="small text-secondary">{resultado.ferreteria_nombre}</span>}
                       <span className="small text-uppercase text-secondary fw-semibold">Código de seguimiento</span>
                       <h2 className="h4 mb-0 mt-1">{resultado.codigo_seguimiento}</h2>
                     </div>

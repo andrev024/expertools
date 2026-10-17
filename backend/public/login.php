@@ -21,7 +21,13 @@ if (!$email || !$password) {
 
 $pdo = Database::getConnection();
 
-$stmt = $pdo->prepare('SELECT id, nombre, password_hash, rol FROM usuario WHERE email = ?');
+$stmt = $pdo->prepare(
+    'SELECT u.id, u.ferreteria_id, f.slug AS ferreteria_slug,
+            u.nombre, u.password_hash, u.rol
+     FROM usuario u
+     JOIN ferreteria f ON f.id = u.ferreteria_id
+     WHERE u.email = ?'
+);
 $stmt->execute([$email]);
 $usuario = $stmt->fetch();
 
@@ -33,12 +39,18 @@ if (!$usuario || !password_verify($password, $usuario['password_hash'])) {
     exit;
 }
 
-$token = JwtHelper::generar((int) $usuario['id'], $usuario['rol']);
+$token = JwtHelper::generar(
+    (int) $usuario['id'],
+    (int) $usuario['ferreteria_id'],
+    $usuario['rol']
+);
 
 echo json_encode([
     'token' => $token,
     'usuario' => [
         'id' => $usuario['id'],
+        'ferreteria_id' => $usuario['ferreteria_id'],
+        'ferreteria_slug' => $usuario['ferreteria_slug'],
         'nombre' => $usuario['nombre'],
         'rol' => $usuario['rol'],
     ],

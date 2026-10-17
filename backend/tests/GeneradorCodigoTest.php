@@ -5,42 +5,38 @@ use App\GeneradorCodigo;
 
 class GeneradorCodigoTest extends TestCase
 {
-    protected function setUp(): void
+    public function testRespetaElPrefijoConfigurado(): void
     {
-        parent::setUp();
-        GeneradorCodigo::resetSecuencia();
+        $codigo = GeneradorCodigo::formatearCodigo('OT-X-', 42);
+
+        $this->assertSame('OT-X-0042', $codigo);
     }
 
-    public function testGeneraConElPrefijoCorrecto(): void
+    public function testFormateaCodigoConPrefijoYConsecutivo(): void
     {
-        $codigo = GeneradorCodigo::generarCodigoSeguimiento();
-
-        $this->assertStringStartsWith('OT-A-', $codigo);
-    }
-
-    public function testGeneraUnConsecutivoConFormatoDeCuatroDigitos(): void
-    {
-        $codigo = GeneradorCodigo::generarCodigoSeguimiento();
-        $parteNumerica = substr($codigo, 5);
-
-        $this->assertMatchesRegularExpression('/^\d{4}$/', $parteNumerica);
-        $this->assertGreaterThanOrEqual(600, (int) $parteNumerica);
-    }
-
-    public function testGeneraConsecutivosSiguientes(): void
-    {
-        $codigo1 = GeneradorCodigo::generarCodigoSeguimiento();
-        $codigo2 = GeneradorCodigo::generarCodigoSeguimiento();
-        $numero1 = (int) substr($codigo1, 5);
-        $numero2 = (int) substr($codigo2, 5);
-
-        $this->assertSame($numero1 + 1, $numero2);
-    }
-
-    public function testLaSecuenciaEmpiezaEn0600EnUnProcesoNuevo(): void
-    {
-        $codigo = GeneradorCodigo::generarCodigoSeguimiento();
+        $codigo = GeneradorCodigo::formatearCodigo('OT-A-', 600);
 
         $this->assertSame('OT-A-0600', $codigo);
+    }
+
+    public function testConsecutivoDeMasDeCuatroDigitosNoSeTrunca(): void
+    {
+        $codigo = GeneradorCodigo::formatearCodigo('OT-A-', 12345);
+
+        $this->assertSame('OT-A-12345', $codigo);
+    }
+
+    public function testRechazaUnConsecutivoInvalido(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+
+        GeneradorCodigo::formatearCodigo('OT-A-', 0);
+    }
+
+    public function testRechazaCodigosQueExcedenLaColumnaDeBaseDeDatos(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+
+        GeneradorCodigo::formatearCodigo('PREFIJO-DEMASIADO-LARGO-', 600);
     }
 }
