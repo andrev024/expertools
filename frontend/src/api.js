@@ -25,9 +25,10 @@ export async function apiFetch(endpoint, opciones = {}) {
   }
 
   if (!respuesta.ok) {
-    // Si el backend respondió con error (400, 401, 403, etc.),
-    // lanzamos una excepción con el mensaje que mandó PHP.
-    throw new Error(datos.error || 'Error en la petición');
+    const error = new Error(datos.error || 'Error en la petición');
+    error.status = respuesta.status;
+    error.data = datos;
+    throw error;
   }
 
   return datos;

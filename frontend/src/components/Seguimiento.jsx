@@ -10,10 +10,14 @@ function Seguimiento({ embebido = false }) {
   const [resultado, setResultado] = useState(null);
   const [error, setError] = useState('');
   const [cargando, setCargando] = useState(false);
+  const [ferreteriasCoincidentes, setFerreteriasCoincidentes] = useState([]);
+  const [ferreteriaElegida, setFerreteriaElegida] = useState('');
 
   const buscarPorCodigo = useCallback(async (codigoBuscado, ferreteriaSlug = '') => {
     setError('');
     setResultado(null);
+    setFerreteriasCoincidentes([]);
+    setFerreteriaElegida('');
     setCargando(true);
     try {
       const parametros = new URLSearchParams({ codigo: codigoBuscado });
@@ -21,7 +25,11 @@ function Seguimiento({ embebido = false }) {
       const datos = await apiFetch(`seguimiento.php?${parametros.toString()}`);
       setResultado(datos);
     } catch (err) {
-      setError(err.message);
+      if (err.status === 409 && Array.isArray(err.data?.ferreterias)) {
+        setFerreteriasCoincidentes(err.data.ferreterias);
+      } else {
+        setError(err.message);
+      }
     } finally {
       setCargando(false);
     }
@@ -43,6 +51,13 @@ function Seguimiento({ embebido = false }) {
     buscarPorCodigo(codigo, searchParams.get('ferreteria') || '');
   }
 
+  function seleccionarFerreteria(e) {
+    e.preventDefault();
+    if (ferreteriaElegida) {
+      buscarPorCodigo(codigo, ferreteriaElegida);
+    }
+  }
+
   return (
     <div className={embebido ? 'tracking-embedded' : 'tracking-page min-vh-100 bg-light'}>
       {!embebido && (
@@ -55,7 +70,7 @@ function Seguimiento({ embebido = false }) {
           <div className="col-12">
             <span className="eyebrow text-uppercase fw-semibold">Seguimiento en tiempo real</span>
             <h1 className="display-5 fw-semibold mt-2 mb-3">Seguimiento de tu reparación</h1>
-            <p className="page-lead text-secondary mb-4">Ingresa el código que te dieron en recepción para consultar tu artículo. Si el código se repite entre ferreterías, usa el enlace que te compartieron.</p>
+            <p className="page-lead text-secondary mb-4">Ingresa el código que te dieron en recepción para consultar tu artículo. Si el código aparece en más de una ferretería, podrás seleccionar la tuya.</p>
 
             <form onSubmit={buscarOrden} className="tracking-form input-group mb-4">
               <input
@@ -63,14 +78,44 @@ function Seguimiento({ embebido = false }) {
                 type="text"
                 placeholder="Ej: OT-A-0600"
                 value={codigo}
-                onChange={(e) => setCodigo(e.target.value)}
+                onChange={(e) => {
+                  setCodigo(e.target.value);
+                  setFerreteriasCoincidentes([]);
+                  setFerreteriaElegida('');
+                  setError('');
+                  setResultado(null);
+                }}
                 required
               />
-              <button className="btn btn-primary px-4" type="submit">Consultar</button>
+              <button className="btn btn-primary px-4" type="submit" disabled={cargando}>Consultar</button>
             </form>
 
             {cargando && <p className="muted text-secondary">Buscando...</p>}
             {error && <p className="message error alert alert-danger" role="alert">{error}</p>}
+            {ferreteriasCoincidentes.length > 0 && (
+              <form onSubmit={seleccionarFerreteria} className="card card-body shadow-sm border-0 mb-4">
+                <label className="form-label fw-semibold" htmlFor="ferreteria-seguimiento">
+                  ¿A cuál ferretería pertenece tu orden?
+                </label>
+                <select
+                  id="ferreteria-seguimiento"
+                  className="form-select mb-3"
+                  value={ferreteriaElegida}
+                  onChange={(e) => setFerreteriaElegida(e.target.value)}
+                  required
+                >
+                  <option value="">Selecciona una ferretería</option>
+                  {ferreteriasCoincidentes.map((ferreteria) => (
+                    <option key={ferreteria.slug} value={ferreteria.slug}>
+                      {ferreteria.nombre_comercial}
+                    </option>
+                  ))}
+                </select>
+                <button className="btn btn-primary align-self-start" type="submit" disabled={cargando || !ferreteriaElegida}>
+                  Consultar orden
+                </button>
+              </form>
+            )}
 
             {resultado && (
               <div className="tracking-result card shadow-sm rounded-3 border-0">

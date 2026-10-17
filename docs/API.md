@@ -64,5 +64,10 @@ Devuelve el estado publico, la linea de tiempo y, cuando existe, el diagnostico,
 
 El código conserva su prefijo y formato consecutivo; cada ferretería mantiene
 su propio contador. Si el mismo código existe en varias cuentas, consultar sin
-`ferreteria` devuelve un error de ambigüedad y el cliente debe usar el enlace
-completo que recibió.
+`ferreteria` devuelve HTTP 409 junto con los nombres comerciales y slugs de las
+ferreterías que tienen ese código. El cliente puede seleccionar la suya y
+repetir la consulta con `ferreteria=<slug>`; la respuesta de seguimiento solo
+contiene la orden que coincide con ambos valores. Para un código compuesto
+solo por números y sin slug, la API busca ese consecutivo con el prefijo de
+cada ferretería; si encuentra varias coincidencias, también permite elegir la
+correcta.
