@@ -133,7 +133,7 @@ function PanelRecepcion() {
   const [filtroEstadoCotizacion, setFiltroEstadoCotizacion] = useState('todos');
   const [ordenExpandidaAccion, setOrdenExpandidaAccion] = useState(null);
   const [filtroEstadoAccion, setFiltroEstadoAccion] = useState('todos');
-  const [seccionActiva, setSeccionActiva] = useState('acciones');
+  const [seccionActiva, setSeccionActiva] = useState('nueva');
 
   async function cargarOrdenes() {
     try {
@@ -393,6 +393,9 @@ function PanelRecepcion() {
       {mensajeExito && <p className="alert alert-success">{mensajeExito}</p>}
       {error && <p className="alert alert-danger">{error}</p>}
       <nav className="panel-secciones" aria-label="Secciones del panel">
+        <button type="button" className={`resumen-chip resumen-chip-button ${seccionActiva === 'nueva' ? 'activo' : ''}`} aria-pressed={seccionActiva === 'nueva'} onClick={() => setSeccionActiva('nueva')}>
+          Nueva orden
+        </button>
         <button type="button" className={`resumen-chip resumen-chip-button ${seccionActiva === 'acciones' ? 'activo' : ''}`} aria-pressed={seccionActiva === 'acciones'} onClick={() => setSeccionActiva('acciones')}>
           Acciones pendientes <strong>{accionesPendientes}</strong>
         </button>
@@ -401,9 +404,6 @@ function PanelRecepcion() {
         </button>
         <button type="button" className={`resumen-chip resumen-chip-button ${seccionActiva === 'todas' ? 'activo' : ''}`} aria-pressed={seccionActiva === 'todas'} onClick={() => setSeccionActiva('todas')}>
           Todas las órdenes <strong>{totalOrdenes}</strong>
-        </button>
-        <button type="button" className={`resumen-chip resumen-chip-button ${seccionActiva === 'nueva' ? 'activo' : ''}`} aria-pressed={seccionActiva === 'nueva'} onClick={() => setSeccionActiva('nueva')}>
-          Nueva orden
         </button>
       </nav>
 
