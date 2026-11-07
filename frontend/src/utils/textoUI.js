@@ -30,11 +30,25 @@ const GRUPOS_ESTADO_HISTORICO = [
 // Devuelve la clave canonica de un estado, agrupando variantes historicas desconocidas
 // bajo 'historico' para que el filtro de estado no muestre decenas de opciones.
 export function normalizarEstado(estado) {
-  const valor = (estado || '').trim();
-  if (ETIQUETAS_ESTADO[valor]) return valor;
+  const valor = String(estado || '').trim();
+  const clave = valor.toLowerCase();
+  if (ETIQUETAS_ESTADO[clave]) return clave;
   const mayus = valor.toUpperCase();
   const grupo = GRUPOS_ESTADO_HISTORICO.find((g) => g.patron.test(mayus));
   return grupo ? grupo.clave : 'historico';
+}
+
+export function normalizarTextoFiltro(valor) {
+  return String(valor ?? '')
+    .trim()
+    .replace(/\s+/g, ' ')
+    .toLocaleLowerCase('es-CO')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+}
+
+export function normalizarTipoOrden(tipo) {
+  return normalizarTextoFiltro(tipo);
 }
 
 const ETIQUETAS_ROL = {
@@ -45,7 +59,7 @@ const ETIQUETAS_ROL = {
 
 const ETIQUETAS_TIPO_ORDEN = {
   reparacion: 'Reparación',
-  mantenimiento: 'Reparación',
+  mantenimiento: 'Mantenimiento',
   garantia: 'Garantía',
 };
 

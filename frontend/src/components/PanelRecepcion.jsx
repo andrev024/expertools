@@ -6,7 +6,13 @@ import EditorRepuestos from './EditorRepuestos';
 import CambioEstadoAdmin from './CambioEstadoAdmin';
 import OrdenAcordeon from './OrdenAcordeon';
 import MenuAcciones from './MenuAcciones';
-import { formatearEstado, formatearTipoOrden, normalizarEstado } from '../utils/textoUI';
+import {
+  formatearEstado,
+  formatearTipoOrden,
+  normalizarEstado,
+  normalizarTextoFiltro,
+  normalizarTipoOrden,
+} from '../utils/textoUI';
 import { abrirWhatsapp, textoSeguimiento, ENLACE_UBICACION, ENLACE_INSTAGRAM, formatearAccesorios } from '../utils/whatsapp';
 import { descargarFacturaOrden, obtenerCotizacionOrden } from '../utils/pdf';
 import { formatearFechaBogota, parsearFechaBogota } from '../utils/fecha';
@@ -64,10 +70,6 @@ function formatearDias(dias) {
   return !dias ? 'Hoy' : `${dias} día${dias === 1 ? '' : 's'}`;
 }
 
-function normalizarUbicacion(ubicacion) {
-  return String(ubicacion || '').trim().replace(/\s+/g, ' ').toLocaleLowerCase('es-CO');
-}
-
 function coincideFiltroAntiguedad(fecha, filtro) {
   if (filtro === 'todas') return true;
   const dias = antiguedadEstado(fecha)?.dias || 0;
@@ -77,7 +79,7 @@ function coincideFiltroAntiguedad(fecha, filtro) {
 }
 
 function coincideTextoBusqueda(orden, texto) {
-  const buscado = texto.trim().toLowerCase();
+  const buscado = normalizarTextoFiltro(texto);
   if (!buscado) return true;
   const campos = [
     orden.codigo_seguimiento,
@@ -90,7 +92,7 @@ function coincideTextoBusqueda(orden, texto) {
     orden.marca,
     orden.modelo,
   ];
-  return campos.some((campo) => String(campo || '').toLowerCase().includes(buscado));
+  return campos.some((campo) => normalizarTextoFiltro(campo).includes(buscado));
 }
 
 // En v2, recepcion ya NO cotiza -- solo recibe y hace la entrega final.
@@ -328,13 +330,14 @@ function PanelRecepcion() {
     return Array.from(claves).sort((a, b) => formatearEstado(a).localeCompare(formatearEstado(b)));
   }, [ordenes]);
   const tiposDisponibles = useMemo(
-    () => Array.from(new Set(ordenes.map((o) => o.tipo).filter(Boolean))),
+    () => Array.from(new Set(ordenes.map((o) => normalizarTipoOrden(o.tipo)).filter(Boolean)))
+      .sort((a, b) => formatearTipoOrden(a).localeCompare(formatearTipoOrden(b), 'es')),
     [ordenes]
   );
   const ubicacionesDisponibles = useMemo(() => {
     const ubicacionesUnicas = new Map();
     ordenes.forEach(({ ubicacion }) => {
-      const clave = normalizarUbicacion(ubicacion);
+      const clave = normalizarTextoFiltro(ubicacion);
       if (clave && !ubicacionesUnicas.has(clave)) {
         ubicacionesUnicas.set(clave, String(ubicacion).trim().replace(/\s+/g, ' '));
       }
@@ -369,8 +372,8 @@ function PanelRecepcion() {
     .filter((orden) => coincideFiltroAntiguedad(orden.fecha_ingreso, filtroAntiguedad))
     .filter((orden) => coincideTextoBusqueda(orden, busquedaTexto))
     .filter((orden) => filtroEstado === 'todos' || normalizarEstado(orden.estado_actual) === filtroEstado)
-    .filter((orden) => filtroTipo === 'todos' || orden.tipo === filtroTipo)
-    .filter((orden) => filtroUbicacion === 'todas' || normalizarUbicacion(orden.ubicacion) === filtroUbicacion)
+    .filter((orden) => filtroTipo === 'todos' || normalizarTipoOrden(orden.tipo) === filtroTipo)
+    .filter((orden) => filtroUbicacion === 'todas' || normalizarTextoFiltro(orden.ubicacion) === filtroUbicacion)
     .sort((a, b) => {
       if (ordenCodigo) {
         const comparacion = String(a.codigo_seguimiento || '').localeCompare(String(b.codigo_seguimiento || ''), undefined, { numeric: true, sensitivity: 'base' });
