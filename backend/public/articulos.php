@@ -60,10 +60,12 @@ function actualizarArticulo(\PDO $pdo, int $ferreteriaId, ?array $datos = null):
     $pdo->beginTransaction();
     try {
         $stmt = $pdo->prepare(
-            'UPDATE articulo a
-             JOIN cliente c ON c.id = a.cliente_id
-             SET a.tipo = ?, a.marca = ?, a.modelo = ?, a.serial = ?
-             WHERE a.id = ? AND c.ferreteria_id = ?'
+            'UPDATE articulo
+             SET tipo = ?, marca = ?, modelo = ?, serial = ?
+             WHERE id = ?
+               AND cliente_id IN (
+                   SELECT id FROM cliente WHERE ferreteria_id = ?
+               )'
         );
         $stmt->execute([$tipo, $marca ?: null, $modelo ?: null, $serial ?: null, $articuloId, $ferreteriaId]);
 
@@ -148,10 +150,14 @@ function listarArticulos(\PDO $pdo, int $ferreteriaId): void
     // Esto es lo que permite el "historial por cliente" que pidió tu amigo.
     $clienteId = $_GET['cliente_id'] ?? null;
 
+    $agregadorJson = $pdo->getAttribute(\PDO::ATTR_DRIVER_NAME) === 'pgsql'
+        ? "COALESCE((SELECT JSON_AGG(JSON_BUILD_OBJECT('id', ac.id, 'nombre', ac.nombre, 'descripcion', ac.descripcion)) FROM accesorio ac WHERE ac.articulo_id = a.id), '[]'::json)"
+        : "COALESCE((SELECT JSON_ARRAYAGG(JSON_OBJECT('id', ac.id, 'nombre', ac.nombre, 'descripcion', ac.descripcion)) FROM accesorio ac WHERE ac.articulo_id = a.id), JSON_ARRAY())";
+
     if ($clienteId) {
         $stmt = $pdo->prepare(
                 "SELECT a.*, c.nombre AS cliente_nombre,
-                    COALESCE((SELECT JSON_ARRAYAGG(JSON_OBJECT('id', ac.id, 'nombre', ac.nombre, 'descripcion', ac.descripcion)) FROM accesorio ac WHERE ac.articulo_id = a.id), JSON_ARRAY()) AS accesorios
+                    {$agregadorJson} AS accesorios
              FROM articulo a
              JOIN cliente c ON c.id = a.cliente_id
              WHERE c.ferreteria_id = ? AND a.cliente_id = ?
@@ -161,7 +167,7 @@ function listarArticulos(\PDO $pdo, int $ferreteriaId): void
     } else {
         $stmt = $pdo->prepare(
                 "SELECT a.*, c.nombre AS cliente_nombre,
-                    COALESCE((SELECT JSON_ARRAYAGG(JSON_OBJECT('id', ac.id, 'nombre', ac.nombre, 'descripcion', ac.descripcion)) FROM accesorio ac WHERE ac.articulo_id = a.id), JSON_ARRAY()) AS accesorios
+                    {$agregadorJson} AS accesorios
              FROM articulo a
              JOIN cliente c ON c.id = a.cliente_id
              WHERE c.ferreteria_id = ?

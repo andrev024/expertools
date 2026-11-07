@@ -189,12 +189,19 @@ function crearOrden(\PDO $pdo, object $usuarioAuth): void
 function listarOrdenes(\PDO $pdo, int $ferreteriaId): void
 {
     try {
+        $agregadorJson = $pdo->getAttribute(\PDO::ATTR_DRIVER_NAME) === 'pgsql'
+            ? "COALESCE((SELECT JSON_AGG(JSON_BUILD_OBJECT('nombre', ac.nombre, 'descripcion', ac.descripcion)) FROM accesorio ac WHERE ac.articulo_id = a.id), '[]'::json)"
+            : "COALESCE((SELECT JSON_ARRAYAGG(JSON_OBJECT('nombre', ac.nombre, 'descripcion', ac.descripcion)) FROM accesorio ac WHERE ac.articulo_id = a.id), JSON_ARRAY())";
+        $extraerUbicacion = $pdo->getAttribute(\PDO::ATTR_DRIVER_NAME) === 'pgsql'
+            ? "REGEXP_REPLACE(h.comentario, '(?s)^.*Ubicacion: ', '')"
+            : "SUBSTRING_INDEX(h.comentario, 'Ubicacion: ', -1)";
+
         $stmt = $pdo->prepare(
                 "SELECT os.id, os.codigo_seguimiento, os.tipo, os.estado_actual, os.fecha_ingreso,
                     COALESCE((SELECT MAX(h.fecha) FROM historial_estado h WHERE h.orden_id = os.id), os.fecha_ingreso) AS estado_desde,
                     a.tipo AS articulo_tipo, a.marca, a.modelo,
-                    COALESCE((SELECT JSON_ARRAYAGG(JSON_OBJECT('nombre', ac.nombre, 'descripcion', ac.descripcion)) FROM accesorio ac WHERE ac.articulo_id = a.id), JSON_ARRAY()) AS accesorios,
-                    COALESCE(os.ubicacion_actual, (SELECT SUBSTRING_INDEX(h.comentario, 'Ubicacion: ', -1)
+                    {$agregadorJson} AS accesorios,
+                    COALESCE(os.ubicacion_actual, (SELECT {$extraerUbicacion}
                               FROM historial_estado h
                               WHERE h.orden_id = os.id AND h.comentario LIKE '%Ubicacion:%'
                               ORDER BY h.fecha DESC LIMIT 1), '') AS ubicacion,
