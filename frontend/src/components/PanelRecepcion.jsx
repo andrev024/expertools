@@ -64,6 +64,10 @@ function formatearDias(dias) {
   return !dias ? 'Hoy' : `${dias} día${dias === 1 ? '' : 's'}`;
 }
 
+function normalizarUbicacion(ubicacion) {
+  return String(ubicacion || '').trim().replace(/\s+/g, ' ').toLocaleLowerCase('es-CO');
+}
+
 function coincideFiltroAntiguedad(fecha, filtro) {
   if (filtro === 'todas') return true;
   const dias = antiguedadEstado(fecha)?.dias || 0;
@@ -327,10 +331,17 @@ function PanelRecepcion() {
     () => Array.from(new Set(ordenes.map((o) => o.tipo).filter(Boolean))),
     [ordenes]
   );
-  const ubicacionesDisponibles = useMemo(
-    () => Array.from(new Set(ordenes.map((o) => o.ubicacion).filter((u) => u && u.trim()))),
-    [ordenes]
-  );
+  const ubicacionesDisponibles = useMemo(() => {
+    const ubicacionesUnicas = new Map();
+    ordenes.forEach(({ ubicacion }) => {
+      const clave = normalizarUbicacion(ubicacion);
+      if (clave && !ubicacionesUnicas.has(clave)) {
+        ubicacionesUnicas.set(clave, String(ubicacion).trim().replace(/\s+/g, ' '));
+      }
+    });
+    return Array.from(ubicacionesUnicas, ([valor, etiqueta]) => ({ valor, etiqueta }))
+      .sort((a, b) => a.etiqueta.localeCompare(b.etiqueta, 'es', { sensitivity: 'base' }));
+  }, [ordenes]);
 
   // Resumen: se calcula sobre todas las ordenes cargadas, sin filtros aplicados.
   const totalOrdenes = ordenes.length;
@@ -359,7 +370,7 @@ function PanelRecepcion() {
     .filter((orden) => coincideTextoBusqueda(orden, busquedaTexto))
     .filter((orden) => filtroEstado === 'todos' || normalizarEstado(orden.estado_actual) === filtroEstado)
     .filter((orden) => filtroTipo === 'todos' || orden.tipo === filtroTipo)
-    .filter((orden) => filtroUbicacion === 'todas' || orden.ubicacion === filtroUbicacion)
+    .filter((orden) => filtroUbicacion === 'todas' || normalizarUbicacion(orden.ubicacion) === filtroUbicacion)
     .sort((a, b) => {
       if (ordenCodigo) {
         const comparacion = String(a.codigo_seguimiento || '').localeCompare(String(b.codigo_seguimiento || ''), undefined, { numeric: true, sensitivity: 'base' });
@@ -637,8 +648,8 @@ function PanelRecepcion() {
           <label htmlFor="filtro-ubicacion-recepcion">Ubicación</label>
           <select id="filtro-ubicacion-recepcion" className="form-select" value={filtroUbicacion} onChange={(e) => { setFiltroUbicacion(e.target.value); setPaginaOrdenes(1); }}>
             <option value="todas">Todas las ubicaciones</option>
-            {ubicacionesDisponibles.map((ubicacion) => (
-              <option key={ubicacion} value={ubicacion}>{ubicacion}</option>
+            {ubicacionesDisponibles.map(({ valor, etiqueta }) => (
+              <option key={valor} value={valor}>{etiqueta}</option>
             ))}
           </select>
         </div>
