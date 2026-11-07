@@ -54,6 +54,35 @@ Content-Type: application/json
 
 La respuesta incluye un token JWT que debe enviarse en las siguientes solicitudes privadas. Los nombres exactos de campos y filtros deben consultarse en cada archivo PHP, que es la fuente de verdad del contrato actual.
 
+## Listas paginadas de órdenes
+
+Las vistas de recepción y técnico consultan sus órdenes con filtros y paginación
+en el servidor. La consulta requiere JWT y siempre se limita a la ferretería del
+usuario autenticado.
+
+```http
+GET /ordenes.php?modo=lista&vista=recepcion&seccion=todas&pagina=1&por_pagina=10&buscar=<texto>
+GET /ordenes.php?modo=lista&vista=tecnico&pagina=1&por_pagina=10&buscar=<texto>
+```
+
+`vista=recepcion` está disponible para recepción y administración. `vista=tecnico`
+está disponible solo para técnicos y contiene los estados que ya aparecen en su
+cola de trabajo. `seccion` acepta `todas`, `cotizaciones` o `acciones` en la vista
+de recepción. El tamaño de página acepta 10, 15 o 25. Se pueden enviar `estado`,
+`antiguedad`, `tipo`, `ubicacion`, `resumen` y `orden` para filtrar; la búsqueda
+parcial ignora mayúsculas y minúsculas (máximo 120 caracteres). `antiguedad`
+acepta `todas`, `una_semana`, `dos_tres_semanas` o `cuatro_semanas`; `resumen`
+acepta `todas`, `pendientes`, `estancadas` o `esperando_abono`; y `orden` acepta
+`asc` o `desc`.
+
+La respuesta contiene el arreglo de la página en `ordenes`, los totales y datos
+de paginación (`total`, `pagina`, `por_pagina`, `total_paginas`), conteos por
+estado y resúmenes para las pestañas. `resumen` y `secciones` cuentan siempre
+toda la ferretería; `conteos_estado` respeta la búsqueda y los demás filtros,
+excepto el estado seleccionado. Las opciones de tipo y ubicación se devuelven
+en `tipos` y `ubicaciones`. Para obtener una orden individual dentro del ámbito
+del usuario se puede usar `GET /ordenes.php?detalle_id=<id>`.
+
 ## Seguimiento publico
 
 ```http

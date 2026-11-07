@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { apiFetch } from '../api';
 import ClienteArticuloPicker from './ClienteArticuloPicker';
 import HistorialOrden from './HistorialOrden';
@@ -6,9 +6,10 @@ import EditorRepuestos from './EditorRepuestos';
 import CambioEstadoAdmin from './CambioEstadoAdmin';
 import OrdenAcordeon from './OrdenAcordeon';
 import MenuAcciones from './MenuAcciones';
-import { formatearEstado, formatearTipoOrden, normalizarEstado } from '../utils/textoUI';
+import { formatearEstado, formatearTipoOrden } from '../utils/textoUI';
 import { abrirWhatsapp, textoSeguimiento, ENLACE_UBICACION, ENLACE_INSTAGRAM, formatearAccesorios } from '../utils/whatsapp';
 import { descargarFacturaOrden, obtenerCotizacionOrden } from '../utils/pdf';
+import ControlesListaOrdenes from './ControlesListaOrdenes';
 
 function antiguedadEstado(fecha) {
   if (!fecha) return null;
@@ -32,9 +33,11 @@ function mostrarFecha(fecha) {
 
 function parsearFechaBogota(fecha) {
   if (!fecha) return null;
-  const valor = String(fecha).trim();
-  const tieneZonaHoraria = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(valor);
-  const fechaNormalizada = valor.includes('T') ? valor : valor.replace(' ', 'T');
+  let fechaNormalizada = String(fecha).trim();
+  fechaNormalizada = fechaNormalizada.includes('T') ? fechaNormalizada : fechaNormalizada.replace(' ', 'T');
+  fechaNormalizada = fechaNormalizada.replace(/([+-]\d{2})(\d{2})$/, '$1:$2');
+  if (/([+-]\d{2})$/.test(fechaNormalizada)) fechaNormalizada += ':00';
+  const tieneZonaHoraria = /(?:Z|[+-]\d{2}:\d{2})$/i.test(fechaNormalizada);
   return new Date(tieneZonaHoraria ? fechaNormalizada : `${fechaNormalizada}-05:00`);
 }
 
@@ -46,15 +49,6 @@ function fechaEstado(orden) {
 // (ENTREGADA, ENTREGADO Y PAGADO, CHATARRA, NO AUTORIZADO, etc.)
 function esEstadoFinalizado(estado) {
   return /ENTREGAD|CHATARRA|CANCELAD|NO.?AUTORIZAD/.test((estado || '').toUpperCase());
-}
-
-function esOrdenEstancada(orden) {
-  return !esEstadoFinalizado(orden.estado_actual)
-    && (antiguedadEstado(fechaEstado(orden))?.dias || 0) > 28;
-}
-
-function esOrdenPendiente(orden) {
-  return !esEstadoFinalizado(orden.estado_actual) && !esOrdenEstancada(orden);
 }
 
 // Color del indicador de estado: reutiliza el mismo calculo de antiguedad
@@ -74,31 +68,6 @@ function formatearDias(dias) {
   return !dias ? 'Hoy' : `${dias} día${dias === 1 ? '' : 's'}`;
 }
 
-function coincideFiltroAntiguedad(fecha, filtro) {
-  if (filtro === 'todas') return true;
-  const dias = antiguedadEstado(fecha)?.dias || 0;
-  if (filtro === 'una_semana') return dias >= 7;
-  if (filtro === 'dos_tres_semanas') return dias >= 14 && dias < 28;
-  return dias >= 28;
-}
-
-function coincideTextoBusqueda(orden, texto) {
-  const buscado = texto.trim().toLowerCase();
-  if (!buscado) return true;
-  const campos = [
-    orden.codigo_seguimiento,
-    orden.cliente_nombre,
-    orden.cliente_empresa,
-    orden.cliente_telefono,
-    orden.cliente_correo,
-    orden.cliente_cedula,
-    orden.articulo_tipo,
-    orden.marca,
-    orden.modelo,
-  ];
-  return campos.some((campo) => String(campo || '').toLowerCase().includes(buscado));
-}
-
 // En v2, recepcion ya NO cotiza -- solo recibe y hace la entrega final.
 const ACCIONES_RECEPCION = {
   esperando_abono: ['esperando_tecnico'],
@@ -108,6 +77,7 @@ const ACCIONES_RECEPCION = {
 
 function PanelRecepcion() {
   const [ordenes, setOrdenes] = useState([]);
+  const [listaMeta, setListaMeta] = useState(null);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState('');
   const [comentarios, setComentarios] = useState({});
@@ -120,7 +90,6 @@ function PanelRecepcion() {
   const [ubicacionInicial, setUbicacionInicial] = useState('');
   const [mensajeExito, setMensajeExito] = useState('');
   const [filtroAntiguedad, setFiltroAntiguedad] = useState('todas');
-  const [busquedaTexto, setBusquedaTexto] = useState('');
   const [filtroEstado, setFiltroEstado] = useState('todos');
   const [filtroTipo, setFiltroTipo] = useState('todos');
   const [filtroUbicacion, setFiltroUbicacion] = useState('todas');
@@ -128,27 +97,56 @@ function PanelRecepcion() {
   const [ordenCodigo, setOrdenCodigo] = useState('desc');
   const [editandoUbicacion, setEditandoUbicacion] = useState(null);
   const [ubicaciones, setUbicaciones] = useState({});
-  const [paginaOrdenes, setPaginaOrdenes] = useState(1);
   const [ordenExpandidaCotizacion, setOrdenExpandidaCotizacion] = useState(null);
   const [filtroEstadoCotizacion, setFiltroEstadoCotizacion] = useState('todos');
   const [ordenExpandidaAccion, setOrdenExpandidaAccion] = useState(null);
   const [filtroEstadoAccion, setFiltroEstadoAccion] = useState('todos');
+  const [seccionActiva, setSeccionActiva] = useState('todas');
+  const [paginas, setPaginas] = useState({ todas: 1, cotizaciones: 1, acciones: 1 });
+  const [tamanosPagina, setTamanosPagina] = useState({ todas: 10, cotizaciones: 10, acciones: 10 });
+  const [busquedas, setBusquedas] = useState({ todas: '', cotizaciones: '', acciones: '' });
+  const [modoVista, setModoVista] = useState(() => localStorage.getItem('expertools-vista-recepcion') || 'tarjetas');
+  const solicitudActual = useRef(0);
 
-  async function cargarOrdenes() {
+  const cargarOrdenes = useCallback(async () => {
+    const solicitud = ++solicitudActual.current;
     try {
-      const datos = await apiFetch('ordenes.php');
-      setOrdenes(datos);
+      setCargando(true);
+      const parametros = new URLSearchParams({
+        modo: 'lista',
+        vista: 'recepcion',
+        seccion: seccionActiva,
+        pagina: String(paginas[seccionActiva]),
+        por_pagina: String(tamanosPagina[seccionActiva]),
+        buscar: busquedas[seccionActiva],
+        estado: seccionActiva === 'todas'
+          ? filtroEstado
+          : seccionActiva === 'cotizaciones' ? filtroEstadoCotizacion : filtroEstadoAccion,
+        antiguedad: seccionActiva === 'todas' ? filtroAntiguedad : 'todas',
+        tipo: seccionActiva === 'todas' ? filtroTipo : 'todos',
+        ubicacion: seccionActiva === 'todas' ? filtroUbicacion : 'todas',
+        resumen: seccionActiva === 'todas' ? filtroResumen : 'todas',
+        orden: ordenCodigo,
+      });
+      const datos = await apiFetch(`ordenes.php?${parametros.toString()}`);
+      if (solicitud !== solicitudActual.current) return;
+      setOrdenes(datos.ordenes);
+      setListaMeta(datos);
+      setError('');
     } catch (err) {
-      setError(err.message);
+      if (solicitud === solicitudActual.current) setError(err.message);
     } finally {
-      setCargando(false);
+      if (solicitud === solicitudActual.current) setCargando(false);
     }
-  }
+  }, [
+    busquedas, filtroAntiguedad, filtroEstado, filtroEstadoAccion, filtroEstadoCotizacion,
+    filtroResumen, filtroTipo, filtroUbicacion, ordenCodigo, paginas, seccionActiva, tamanosPagina,
+  ]);
 
   useEffect(() => {
-    const temporizador = setTimeout(() => cargarOrdenes(), 0);
+    const temporizador = setTimeout(cargarOrdenes, 200);
     return () => clearTimeout(temporizador);
-  }, []);
+  }, [cargarOrdenes]);
 
   function abrirAvisoEntrega(orden, ventanaWhatsapp) {
     const mensaje = [
@@ -310,11 +308,13 @@ function PanelRecepcion() {
 
       // Recargamos para obtener los datos completos (cliente, artículo, accesorios)
       // de la orden recién creada y así poder avisarle por WhatsApp con toda la info.
-      const listaActualizada = await apiFetch('ordenes.php');
-      setOrdenes(listaActualizada);
-      const ordenCreada = listaActualizada.find((o) => String(o.id) === String(resultado.id));
+      const ordenCreada = await apiFetch(`ordenes.php?detalle_id=${encodeURIComponent(resultado.id)}`);
       if (ordenCreada) {
         abrirAvisoCreacion(ordenCreada, ventanaWhatsapp);
+        setPaginas((actuales) => ({ ...actuales, todas: 1 }));
+        setSeccionActiva('todas');
+        setFiltroResumen('todas');
+        setBusquedas((actuales) => ({ ...actuales, todas: '' }));
         // Primera factura: datos de ingreso, aún sin cotización.
         descargarFacturaOrden({ orden: ordenCreada, sufijo: 'ingreso' }).catch((err) => {
           setError(`La orden se creó, pero no se pudo generar su comprobante: ${err.message}`);
@@ -328,65 +328,29 @@ function PanelRecepcion() {
     }
   }
 
-  const estadosDisponibles = useMemo(() => {
-    const claves = new Set(ordenes.map((o) => normalizarEstado(o.estado_actual)));
-    return Array.from(claves).sort((a, b) => formatearEstado(a).localeCompare(formatearEstado(b)));
-  }, [ordenes]);
-  const tiposDisponibles = useMemo(
-    () => Array.from(new Set(ordenes.map((o) => o.tipo).filter(Boolean))),
-    [ordenes]
-  );
-  const ubicacionesDisponibles = useMemo(
-    () => Array.from(new Set(ordenes.map((o) => o.ubicacion).filter((u) => u && u.trim()))),
-    [ordenes]
-  );
-
-  // Resumen: se calcula sobre todas las ordenes cargadas, sin filtros aplicados.
-  const totalOrdenes = ordenes.length;
-  const pendientesCount = ordenes.filter(esOrdenPendiente).length;
-  const estancadasCount = ordenes.filter(esOrdenEstancada).length;
-  const esperandoAbonoCount = ordenes.filter((o) => o.estado_actual === 'esperando_abono').length;
+  const conteosEstado = listaMeta?.conteos_estado || {};
+  const estadosDisponibles = Object.keys(conteosEstado).sort((a, b) => formatearEstado(a).localeCompare(formatearEstado(b)));
+  const tiposDisponibles = listaMeta?.tipos || [];
+  const ubicacionesDisponibles = listaMeta?.ubicaciones || [];
+  const resumen = listaMeta?.resumen || {};
 
   function aplicarFiltroResumen(filtro) {
     setFiltroResumen(filtro);
     setFiltroAntiguedad('todas');
-    setBusquedaTexto('');
+    setBusquedas((actuales) => ({ ...actuales, todas: '' }));
     setFiltroEstado('todos');
     setFiltroTipo('todos');
     setFiltroUbicacion('todas');
-    setPaginaOrdenes(1);
+    setPaginas((actuales) => ({ ...actuales, todas: 1 }));
   }
 
-  const ordenesTabla = ordenes
-    .filter((orden) => (
-      filtroResumen === 'todas'
-      || (filtroResumen === 'pendientes' && esOrdenPendiente(orden))
-      || (filtroResumen === 'estancadas' && esOrdenEstancada(orden))
-      || (filtroResumen === 'esperando_abono' && orden.estado_actual === 'esperando_abono')
-    ))
-    .filter((orden) => coincideFiltroAntiguedad(orden.fecha_ingreso, filtroAntiguedad))
-    .filter((orden) => coincideTextoBusqueda(orden, busquedaTexto))
-    .filter((orden) => filtroEstado === 'todos' || normalizarEstado(orden.estado_actual) === filtroEstado)
-    .filter((orden) => filtroTipo === 'todos' || orden.tipo === filtroTipo)
-    .filter((orden) => filtroUbicacion === 'todas' || orden.ubicacion === filtroUbicacion)
-    .sort((a, b) => {
-      if (ordenCodigo) {
-        const comparacion = String(a.codigo_seguimiento || '').localeCompare(String(b.codigo_seguimiento || ''), undefined, { numeric: true, sensitivity: 'base' });
-        return ordenCodigo === 'asc' ? comparacion : -comparacion;
-      }
-      return 0;
-    });
-
-  const ORDENES_POR_PAGINA = 10;
-  const totalPaginasOrdenes = Math.max(1, Math.ceil(ordenesTabla.length / ORDENES_POR_PAGINA));
-  const paginaOrdenesSegura = Math.min(paginaOrdenes, totalPaginasOrdenes);
-  const ordenesVisibles = ordenesTabla.slice(
-    (paginaOrdenesSegura - 1) * ORDENES_POR_PAGINA,
-    paginaOrdenesSegura * ORDENES_POR_PAGINA
-  );
+  const ordenesVisibles = ordenes;
+  const paginaActual = listaMeta?.pagina || paginas[seccionActiva];
+  const totalPaginas = listaMeta?.total_paginas || 1;
+  const totalActual = listaMeta?.total || 0;
 
   return (
-    <div className="operations-panel">
+    <div className={`operations-panel modo-lista-${modoVista}`}>
       <h2 className="h4 border-start border-4 ps-3">Crear nueva orden</h2>
       <form onSubmit={crearOrden} className="card card-body shadow-sm rounded-3 border-0 mb-4">
         <ClienteArticuloPicker
@@ -429,32 +393,58 @@ function PanelRecepcion() {
       {mensajeExito && <p className="alert alert-success">{mensajeExito}</p>}
       {error && <p className="alert alert-danger">{error}</p>}
 
+      <div className="tabs-panel-operaciones" role="tablist" aria-label="Secciones de órdenes">
+        <button type="button" role="tab" aria-selected={seccionActiva === 'todas'} className={`resumen-chip resumen-chip-button ${seccionActiva === 'todas' ? 'activo' : ''}`} onClick={() => setSeccionActiva('todas')}>
+          Todas las órdenes <strong>{resumen.todas || 0}</strong>
+        </button>
+        <button type="button" role="tab" aria-selected={seccionActiva === 'cotizaciones'} className={`resumen-chip resumen-chip-button ${seccionActiva === 'cotizaciones' ? 'activo' : ''}`} onClick={() => setSeccionActiva('cotizaciones')}>
+          Cotizaciones <strong>{listaMeta?.secciones?.cotizaciones || 0}</strong>
+        </button>
+        <button type="button" role="tab" aria-selected={seccionActiva === 'acciones'} className={`resumen-chip resumen-chip-button ${seccionActiva === 'acciones' ? 'activo' : ''}`} onClick={() => setSeccionActiva('acciones')}>
+          Acciones pendientes <strong>{listaMeta?.secciones?.acciones || 0}</strong>
+        </button>
+      </div>
+
+      <section hidden={seccionActiva !== 'cotizaciones'} aria-label="Cotizaciones por confirmar">
       <h2 className="h4 border-start border-4 ps-3">Cotizaciones por confirmar</h2>
       {(() => {
         const ordenesCotizacion = ordenes.filter((orden) => ['cotizado', 'esperando_respuesta'].includes(orden.estado_actual));
-        const estadosCotizacion = ['cotizado', 'esperando_respuesta'].filter((estado) => ordenesCotizacion.some((orden) => orden.estado_actual === estado));
+        const estadosCotizacion = ['cotizado', 'esperando_respuesta'].filter((estado) => (conteosEstado[estado] || 0) > 0);
         const ordenesCotizacionFiltradas = ordenesCotizacion.filter((orden) => filtroEstadoCotizacion === 'todos' || orden.estado_actual === filtroEstadoCotizacion);
         return (
           <>
+            <ControlesListaOrdenes
+              busqueda={busquedas.cotizaciones}
+              onBusqueda={(valor) => { setBusquedas((actuales) => ({ ...actuales, cotizaciones: valor })); setPaginas((actuales) => ({ ...actuales, cotizaciones: 1 })); }}
+              pagina={paginaActual}
+              onPagina={(valor) => setPaginas((actuales) => ({ ...actuales, cotizaciones: valor }))}
+              totalPaginas={totalPaginas}
+              total={totalActual}
+              porPagina={tamanosPagina.cotizaciones}
+              onPorPagina={(valor) => { setTamanosPagina((actuales) => ({ ...actuales, cotizaciones: valor })); setPaginas((actuales) => ({ ...actuales, cotizaciones: 1 })); }}
+              modoVista={modoVista}
+              onModoVista={(modo) => { setModoVista(modo); localStorage.setItem('expertools-vista-recepcion', modo); }}
+            />
             {estadosCotizacion.length > 0 && (
               <div className="tabs-filtro-estado" role="tablist" aria-label="Filtrar cotizaciones por estado">
-                <button type="button" className={`resumen-chip resumen-chip-button ${filtroEstadoCotizacion === 'todos' ? 'activo' : ''}`} onClick={() => setFiltroEstadoCotizacion('todos')}>
-                  Todas
+                <button type="button" className={`resumen-chip resumen-chip-button ${filtroEstadoCotizacion === 'todos' ? 'activo' : ''}`} onClick={() => { setFiltroEstadoCotizacion('todos'); setPaginas((actuales) => ({ ...actuales, cotizaciones: 1 })); }}>
+                  Todas <strong>{(conteosEstado.cotizado || 0) + (conteosEstado.esperando_respuesta || 0)}</strong>
                 </button>
                 {estadosCotizacion.map((estado) => (
-                  <button type="button" key={estado} className={`resumen-chip resumen-chip-button ${filtroEstadoCotizacion === estado ? 'activo' : ''}`} onClick={() => setFiltroEstadoCotizacion(estado)}>
-                    {formatearEstado(estado)}
+                  <button type="button" key={estado} className={`resumen-chip resumen-chip-button ${filtroEstadoCotizacion === estado ? 'activo' : ''}`} onClick={() => { setFiltroEstadoCotizacion(estado); setPaginas((actuales) => ({ ...actuales, cotizaciones: 1 })); }}>
+                    {formatearEstado(estado)} <strong>{conteosEstado[estado] || 0}</strong>
                   </button>
                 ))}
               </div>
             )}
-            {ordenesCotizacion.length === 0 && <p className="alert alert-light border">No hay cotizaciones pendientes por confirmar.</p>}
-            {ordenesCotizacion.length > 0 && ordenesCotizacionFiltradas.length === 0 && <p className="alert alert-light border">Ninguna coincide con el filtro seleccionado.</p>}
-            {ordenesCotizacionFiltradas.map((orden) => (
+            {cargando && <p className="alert alert-light border">Cargando cotizaciones...</p>}
+            {!cargando && totalActual === 0 && <p className="alert alert-light border">{busquedas.cotizaciones ? 'No hay cotizaciones que coincidan con la búsqueda.' : 'No hay cotizaciones pendientes por confirmar.'}</p>}
+            {!cargando && ordenesCotizacionFiltradas.map((orden) => (
               <OrdenAcordeon
                 key={`cotizacion-${orden.id}`}
                 orden={orden}
                 kicker="Respuesta del cliente"
+                claseExtra={modoVista === 'compacto' ? 'orden-acordeon-compacto' : ''}
                 expandido={ordenExpandidaCotizacion === orden.id}
                 onToggle={() => setOrdenExpandidaCotizacion((actual) => (actual === orden.id ? null : orden.id))}
               >
@@ -480,33 +470,48 @@ function PanelRecepcion() {
           </>
         );
       })()}
+      </section>
 
+      <section hidden={seccionActiva !== 'acciones'} aria-label="Acciones pendientes">
       <h2 className="h4 border-start border-4 ps-3">Acciones pendientes </h2>
       {(() => {
         const ordenesAccion = ordenes.filter((o) => ACCIONES_RECEPCION[o.estado_actual]);
-        const estadosAccion = Object.keys(ACCIONES_RECEPCION).filter((estado) => ordenesAccion.some((orden) => orden.estado_actual === estado));
+        const estadosAccion = Object.keys(ACCIONES_RECEPCION).filter((estado) => (conteosEstado[estado] || 0) > 0);
         const ordenesAccionFiltradas = ordenesAccion.filter((orden) => filtroEstadoAccion === 'todos' || orden.estado_actual === filtroEstadoAccion);
         return (
           <>
+            <ControlesListaOrdenes
+              busqueda={busquedas.acciones}
+              onBusqueda={(valor) => { setBusquedas((actuales) => ({ ...actuales, acciones: valor })); setPaginas((actuales) => ({ ...actuales, acciones: 1 })); }}
+              pagina={paginaActual}
+              onPagina={(valor) => setPaginas((actuales) => ({ ...actuales, acciones: valor }))}
+              totalPaginas={totalPaginas}
+              total={totalActual}
+              porPagina={tamanosPagina.acciones}
+              onPorPagina={(valor) => { setTamanosPagina((actuales) => ({ ...actuales, acciones: valor })); setPaginas((actuales) => ({ ...actuales, acciones: 1 })); }}
+              modoVista={modoVista}
+              onModoVista={(modo) => { setModoVista(modo); localStorage.setItem('expertools-vista-recepcion', modo); }}
+            />
             {estadosAccion.length > 0 && (
               <div className="tabs-filtro-estado" role="tablist" aria-label="Filtrar acciones pendientes por estado">
-                <button type="button" className={`resumen-chip resumen-chip-button ${filtroEstadoAccion === 'todos' ? 'activo' : ''}`} onClick={() => setFiltroEstadoAccion('todos')}>
-                  Todas
+                <button type="button" className={`resumen-chip resumen-chip-button ${filtroEstadoAccion === 'todos' ? 'activo' : ''}`} onClick={() => { setFiltroEstadoAccion('todos'); setPaginas((actuales) => ({ ...actuales, acciones: 1 })); }}>
+                  Todas <strong>{Object.keys(ACCIONES_RECEPCION).reduce((total, estado) => total + (conteosEstado[estado] || 0), 0)}</strong>
                 </button>
                 {estadosAccion.map((estado) => (
-                  <button type="button" key={estado} className={`resumen-chip resumen-chip-button ${filtroEstadoAccion === estado ? 'activo' : ''}`} onClick={() => setFiltroEstadoAccion(estado)}>
-                    {formatearEstado(estado)}
+                  <button type="button" key={estado} className={`resumen-chip resumen-chip-button ${filtroEstadoAccion === estado ? 'activo' : ''}`} onClick={() => { setFiltroEstadoAccion(estado); setPaginas((actuales) => ({ ...actuales, acciones: 1 })); }}>
+                    {formatearEstado(estado)} <strong>{conteosEstado[estado] || 0}</strong>
                   </button>
                 ))}
               </div>
             )}
-            {ordenesAccion.length === 0 && <p className="alert alert-light border">No hay acciones pendientes por ahora.</p>}
-            {ordenesAccion.length > 0 && ordenesAccionFiltradas.length === 0 && <p className="alert alert-light border">Ninguna coincide con el filtro seleccionado.</p>}
-            {ordenesAccionFiltradas.map((orden) => (
+            {cargando && <p className="alert alert-light border">Cargando acciones...</p>}
+            {!cargando && totalActual === 0 && <p className="alert alert-light border">{busquedas.acciones ? 'No hay acciones que coincidan con la búsqueda.' : 'No hay acciones pendientes por ahora.'}</p>}
+            {!cargando && ordenesAccionFiltradas.map((orden) => (
               <OrdenAcordeon
                 key={orden.id}
                 orden={orden}
                 kicker="Orden pendiente"
+                claseExtra={modoVista === 'compacto' ? 'orden-acordeon-compacto' : ''}
                 expandido={ordenExpandidaAccion === orden.id}
                 onToggle={() => setOrdenExpandidaAccion((actual) => (actual === orden.id ? null : orden.id))}
               >
@@ -559,38 +564,40 @@ function PanelRecepcion() {
           </>
         );
       })()}
+      </section>
 
+      <section hidden={seccionActiva !== 'todas'} aria-label="Todas las órdenes">
       <h2 className="h4 border-start border-4 ps-3">Todas las órdenes</h2>
       <div className="resumen-ordenes" aria-label="Resumen de órdenes">
         <button type="button" className="resumen-chip resumen-chip-button" onClick={() => aplicarFiltroResumen('todas')}>
-          <strong>{totalOrdenes}</strong> Todas
+          <strong>{resumen.todas || 0}</strong> Todas
         </button>
         <button
           type="button"
           className="resumen-chip resumen-chip-button"
           title=" Órdenes que todavía no han terminado su proceso."
-          aria-label={`Pendientes: ${pendientesCount}. Órdenes que todavía no han terminado su proceso.`}
+          aria-label={`Pendientes: ${resumen.pendientes || 0}. Órdenes que todavía no han terminado su proceso.`}
           onClick={() => aplicarFiltroResumen('pendientes')}
         >
-          <strong>{pendientesCount}</strong> Pendientes
+          <strong>{resumen.pendientes || 0}</strong> Pendientes
         </button>
         <button
           type="button"
           className="resumen-chip resumen-chip-button resumen-chip-alerta"
           title="Órdenes que todavía no han terminado su proceso y que llevan 28 días o más en algún proceso quietas."
-          aria-label={`Estancadas: ${estancadasCount}. Órdenes que todavía no han terminado su proceso y que llevan 28 días o más en algún proceso.`}
+          aria-label={`Estancadas: ${resumen.estancadas || 0}. Órdenes que todavía no han terminado su proceso y que llevan 28 días o más en algún proceso.`}
           onClick={() => aplicarFiltroResumen('estancadas')}
         >
-          <strong>{estancadasCount}</strong> Estancadas
+          <strong>{resumen.estancadas || 0}</strong> Estancadas
         </button>
         <button type="button" className="resumen-chip resumen-chip-button" onClick={() => aplicarFiltroResumen('esperando_abono')}>
-          <strong>{esperandoAbonoCount}</strong> Esperando abono
+          <strong>{resumen.esperando_abono || 0}</strong> Esperando abono
         </button>
       </div>
       <div className="filtros-bar">
         <div className="filtro-campo">
           <label htmlFor="filtro-antiguedad-recepcion">Antigüedad</label>
-          <select id="filtro-antiguedad-recepcion" className="form-select" value={filtroAntiguedad} onChange={(e) => { setFiltroAntiguedad(e.target.value); setPaginaOrdenes(1); }}>
+          <select id="filtro-antiguedad-recepcion" className="form-select" value={filtroAntiguedad} onChange={(e) => { setFiltroAntiguedad(e.target.value); setPaginas((actuales) => ({ ...actuales, todas: 1 })); }}>
             <option value="todas">Todas las órdenes</option>
             <option value="una_semana">1 semana o más</option>
             <option value="dos_tres_semanas">2 a 3 semanas</option>
@@ -599,7 +606,7 @@ function PanelRecepcion() {
         </div>
         <div className="filtro-campo">
           <label htmlFor="filtro-estado-recepcion">Estado</label>
-          <select id="filtro-estado-recepcion" className="form-select" value={filtroEstado} onChange={(e) => { setFiltroEstado(e.target.value); setPaginaOrdenes(1); }}>
+          <select id="filtro-estado-recepcion" className="form-select" value={filtroEstado} onChange={(e) => { setFiltroEstado(e.target.value); setPaginas((actuales) => ({ ...actuales, todas: 1 })); }}>
             <option value="todos">Todos los estados</option>
             {estadosDisponibles.map((estado) => (
               <option key={estado} value={estado}>{formatearEstado(estado)}</option>
@@ -608,7 +615,7 @@ function PanelRecepcion() {
         </div>
         <div className="filtro-campo">
           <label htmlFor="filtro-tipo-recepcion">Tipo</label>
-          <select id="filtro-tipo-recepcion" className="form-select" value={filtroTipo} onChange={(e) => { setFiltroTipo(e.target.value); setPaginaOrdenes(1); }}>
+          <select id="filtro-tipo-recepcion" className="form-select" value={filtroTipo} onChange={(e) => { setFiltroTipo(e.target.value); setPaginas((actuales) => ({ ...actuales, todas: 1 })); }}>
             <option value="todos">Todos los tipos</option>
             {tiposDisponibles.map((tipoOrden) => (
               <option key={tipoOrden} value={tipoOrden}>{formatearTipoOrden(tipoOrden)}</option>
@@ -617,32 +624,70 @@ function PanelRecepcion() {
         </div>
         <div className="filtro-campo">
           <label htmlFor="filtro-ubicacion-recepcion">Ubicación</label>
-          <select id="filtro-ubicacion-recepcion" className="form-select" value={filtroUbicacion} onChange={(e) => { setFiltroUbicacion(e.target.value); setPaginaOrdenes(1); }}>
+          <select id="filtro-ubicacion-recepcion" className="form-select" value={filtroUbicacion} onChange={(e) => { setFiltroUbicacion(e.target.value); setPaginas((actuales) => ({ ...actuales, todas: 1 })); }}>
             <option value="todas">Todas las ubicaciones</option>
             {ubicacionesDisponibles.map((ubicacion) => (
               <option key={ubicacion} value={ubicacion}>{ubicacion}</option>
             ))}
           </select>
         </div>
-        <div className="filtro-campo">
-          <label htmlFor="busqueda-texto-recepcion">Buscar</label>
-          <input
-            id="busqueda-texto-recepcion"
-            className="form-control"
-            type="text"
-            placeholder="Código, cliente, teléfono o artículo"
-            value={busquedaTexto}
-            onChange={(e) => { setBusquedaTexto(e.target.value); setPaginaOrdenes(1); }}
-          />
-        </div>
       </div>
+      <ControlesListaOrdenes
+        busqueda={busquedas.todas}
+        onBusqueda={(valor) => { setBusquedas((actuales) => ({ ...actuales, todas: valor })); setPaginas((actuales) => ({ ...actuales, todas: 1 })); }}
+        pagina={paginaActual}
+        onPagina={(valor) => setPaginas((actuales) => ({ ...actuales, todas: valor }))}
+        totalPaginas={totalPaginas}
+        total={totalActual}
+        porPagina={tamanosPagina.todas}
+        onPorPagina={(valor) => { setTamanosPagina((actuales) => ({ ...actuales, todas: valor })); setPaginas((actuales) => ({ ...actuales, todas: 1 })); }}
+        modoVista={modoVista}
+        onModoVista={(modo) => { setModoVista(modo); localStorage.setItem('expertools-vista-recepcion', modo); }}
+      />
       <div className="antiguedad-leyenda" aria-label="Leyenda de antigüedad">
         <span><i className="leyenda-color antiguedad-amarilla" /> 1 semana</span>
         <span><i className="leyenda-color antiguedad-naranja" /> 2 a 3 semanas</span>
         <span><i className="leyenda-color antiguedad-roja" /> 4 semanas o más</span>
       </div>
       {cargando ? (
-        <p>Cargando...</p>
+        <p className="alert alert-light border">Cargando órdenes…</p>
+      ) : totalActual === 0 ? (
+        <p className="alert alert-light border">{busquedas.todas ? 'No hay órdenes que coincidan con la búsqueda y los filtros.' : 'No hay órdenes para mostrar.'}</p>
+      ) : modoVista === 'tarjetas' ? (
+        <div className="lista-ordenes-tarjetas">
+          {ordenesVisibles.map((orden) => (
+            <OrdenAcordeon
+              key={orden.id}
+              orden={orden}
+              kicker={formatearTipoOrden(orden.tipo)}
+              expandido={ordenExpandidaAccion === `todas-${orden.id}`}
+              onToggle={() => setOrdenExpandidaAccion((actual) => (actual === `todas-${orden.id}` ? null : `todas-${orden.id}`))}
+              claseExtra={antiguedadEstado(orden.fecha_ingreso)?.clase || ''}
+            >
+              <p><strong>Estado:</strong> {formatearEstado(orden.estado_actual)} · {formatearDias(antiguedadEstado(fechaEstado(orden))?.dias)} en este estado</p>
+              <p><strong>Artículo:</strong> {orden.articulo_tipo} {orden.marca || ''} {orden.modelo || ''}</p>
+              <p><strong>Cliente:</strong> {orden.cliente_nombre || orden.cliente_empresa || 'Cliente sin nombre'} · {orden.cliente_telefono || 'sin teléfono'}</p>
+              <p><strong>Ubicación:</strong> {orden.ubicacion || 'Sin ubicación'}</p>
+              <p className="small text-secondary">Estado desde: {mostrarFecha(fechaEstado(orden))}</p>
+              <div className="d-flex flex-wrap gap-2 align-items-center">
+                <button type="button" className="button-quiet" onClick={() => generarPdfOrden(orden)}>Generar PDF</button>
+                <HistorialOrden ordenId={orden.id} compacto />
+                <EditorRepuestos ordenId={orden.id} onGuardado={cargarOrdenes} />
+                <CambioEstadoAdmin orden={orden} onCambiado={cargarOrdenes} />
+                <button type="button" className="button-quiet" onClick={() => { setUbicaciones({ ...ubicaciones, [orden.id]: orden.ubicacion || '' }); setEditandoUbicacion(orden.id); }}>
+                  Cambiar ubicación
+                </button>
+              </div>
+              {editandoUbicacion === orden.id && (
+                <div className="d-flex flex-wrap gap-2 mt-2">
+                  <input className="form-control" type="text" value={ubicaciones[orden.id] ?? orden.ubicacion ?? ''} onChange={(event) => setUbicaciones({ ...ubicaciones, [orden.id]: event.target.value })} />
+                  <button type="button" className="button button-primary" onClick={() => guardarUbicacion(orden.id)}>Guardar</button>
+                  <button type="button" className="button button-quiet" onClick={() => setEditandoUbicacion(null)}>Cancelar</button>
+                </div>
+              )}
+            </OrdenAcordeon>
+          ))}
+        </div>
       ) : (
         <div className="orders-table-wrapper">
           <table className="orders-table ordenes-tabla table table-hover table-striped align-middle">
@@ -729,15 +774,9 @@ function PanelRecepcion() {
               ))}
             </tbody>
           </table>
-          {totalPaginasOrdenes > 1 && (
-            <div className="clientes-paginacion">
-              <button type="button" className="button-quiet" disabled={paginaOrdenesSegura === 1} onClick={() => setPaginaOrdenes((pagina) => pagina - 1)}>Anterior</button>
-              <span>Página {paginaOrdenesSegura} de {totalPaginasOrdenes}</span>
-              <button type="button" className="button-quiet" disabled={paginaOrdenesSegura === totalPaginasOrdenes} onClick={() => setPaginaOrdenes((pagina) => pagina + 1)}>Siguiente</button>
-            </div>
-          )}
         </div>
       )}
+      </section>
     </div>
   );
 }

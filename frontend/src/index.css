@@ -334,6 +334,25 @@ button:not(.button-quiet):hover, .button-primary:hover { background: var(--accen
 .filtro-campo { display: flex; flex-direction: column; gap: 4px; }
 .filtro-campo label { font-size: 11px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; color: #6c757d; }
 .filtro-campo select, .filtro-campo input { min-width: 190px; }
+.tabs-panel-operaciones { display: flex; flex-wrap: wrap; gap: 10px; margin: 22px 0; padding-bottom: 14px; border-bottom: 1px solid var(--border); }
+.tabs-panel-operaciones .activo, .lista-vista-control .activo { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-dark); }
+.lista-ordenes-controles { display: flex; align-items: flex-end; flex-wrap: wrap; gap: 12px; margin: 14px 0 18px; }
+.lista-ordenes-controles .filtro-campo { gap: 5px; }
+.lista-ordenes-controles .filtro-campo span { color: #6c757d; font-size: 11px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; }
+.lista-ordenes-controles .lista-busqueda { flex: 1 1 280px; }
+.lista-ordenes-controles .lista-busqueda input { min-width: 0; }
+.lista-ordenes-controles .lista-tamano select { min-width: 92px; }
+.lista-vista-control, .lista-paginacion { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+.lista-vista-control { padding: 3px; border: 1px solid var(--border); border-radius: 999px; }
+.lista-vista-control .button-quiet { min-height: 34px; padding: 5px 12px; }
+.lista-paginacion { margin-left: auto; color: #495057; font-size: 13px; }
+.lista-paginacion button { min-height: 34px; padding: 5px 10px; }
+.lista-paginacion button:disabled { cursor: not-allowed; opacity: .5; }
+.orden-acordeon-compacto { margin-block: 5px; }
+.orden-acordeon-compacto .orden-acordeon-resumen { gap: 9px; padding-block: 8px; }
+.orden-acordeon-compacto .orden-acordeon-body { padding-bottom: 12px; }
+.modo-lista-compacto .orden-acordeon-kicker { display: none; }
+.lista-ordenes-tarjetas .orden-acordeon { margin-block: 12px; }
 
 /* Celdas de la tabla de ordenes */
 .codigo-badge { display: inline-block; padding: 4px 9px; border-radius: 6px; background: var(--ink-soft); color: var(--accent-dark); font-weight: 700; font-family: var(--mono, monospace); font-size: 12.5px; letter-spacing: .3px; white-space: nowrap; }
@@ -562,4 +581,9 @@ input:focus, select:focus, textarea:focus { outline: 0; border-color: var(--acce
   .orden-acordeon-cliente, .orden-acordeon-articulo { flex-basis: 100%; white-space: normal; }
   .acciones-principales .button, .acciones-principales button { flex: 1 1 auto; }
   .history-item-head { align-items: flex-start; flex-direction: column; gap: 3px; }
+  .lista-ordenes-controles { align-items: stretch; }
+  .lista-ordenes-controles .lista-busqueda { flex-basis: 100%; }
+  .lista-paginacion { width: 100%; justify-content: space-between; margin-left: 0; }
+  .tabs-panel-operaciones { gap: 7px; }
+  .tabs-panel-operaciones .resumen-chip { flex: 1 1 145px; justify-content: center; }
 }
