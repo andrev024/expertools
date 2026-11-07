@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { apiFetch } from '../api';
 import { formatearEstado } from '../utils/textoUI';
 import HistorialOrden from './HistorialOrden';
@@ -8,7 +8,6 @@ import OrdenAcordeon from './OrdenAcordeon';
 import MenuAcciones from './MenuAcciones';
 import { abrirWhatsapp, textoSeguimiento, ENLACE_UBICACION, ENLACE_INSTAGRAM } from '../utils/whatsapp';
 import { descargarFacturaOrden } from '../utils/pdf';
-import ControlesListaOrdenes from './ControlesListaOrdenes';
 
 // Transiciones simples (via cambiar_estado.php) que no requieren formulario extra
 const TRANSICIONES_SIMPLES = {
@@ -29,12 +28,7 @@ function mostrarFecha(fecha) {
 }
 
 function parsearFechaBogota(fecha) {
-  let fechaNormalizada = String(fecha).trim();
-  fechaNormalizada = fechaNormalizada.includes('T') ? fechaNormalizada : fechaNormalizada.replace(' ', 'T');
-  fechaNormalizada = fechaNormalizada.replace(/([+-]\d{2})(\d{2})$/, '$1:$2');
-  if (/([+-]\d{2})$/.test(fechaNormalizada)) fechaNormalizada += ':00';
-  const tieneZonaHoraria = /(?:Z|[+-]\d{2}:\d{2})$/i.test(fechaNormalizada);
-  return new Date(tieneZonaHoraria ? fechaNormalizada : `${fechaNormalizada}-05:00`);
+  return new Date(`${fecha.replace(' ', 'T')}-05:00`);
 }
 
 function fechaEstado(orden) {
@@ -49,6 +43,29 @@ function antiguedadIngreso(fecha) {
     clase: dias >= 28 ? 'antiguedad-roja' : dias >= 14 ? 'antiguedad-naranja' : dias >= 7 ? 'antiguedad-amarilla' : '',
   };
 }
+
+function coincideFiltroAntiguedad(fecha, filtro) {
+  if (filtro === 'todas') return true;
+  const dias = antiguedadIngreso(fecha)?.dias || 0;
+  if (filtro === 'una_semana') return dias >= 7;
+  if (filtro === 'dos_tres_semanas') return dias >= 14 && dias < 28;
+  return dias >= 28;
+}
+
+// Estados donde el tecnico tiene algo que hacer, en cualquiera de las 3 formas:
+// tomar la orden, diagnosticar/cotizar, responder por el cliente, o transicion simple.
+const ESTADOS_ACCIONABLES = [
+  'recibido',
+  'sin_respuesta',
+  'en_diagnostico',
+  'cotizado',
+  'esperando_respuesta',
+  'esperando_abono',
+  'esperando_tecnico',
+  'en_reparacion',
+  'esperando_repuesto',
+  'finalizado_tecnico',
+];
 
 // Estados desde los que ya existe una cotización registrada y por lo tanto
 // se pueden editar sus repuestos (agregar uno nuevo, corregir cantidades, etc.)
@@ -72,50 +89,31 @@ function repuestoManoObraInicial(tipoArticulo) {
 
 function PanelTecnico() {
   const [ordenes, setOrdenes] = useState([]);
-  const [listaMeta, setListaMeta] = useState(null);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState('');
   const [editandoUbicacion, setEditandoUbicacion] = useState(null);
   const [ubicaciones, setUbicaciones] = useState({});
   const [filtroAntiguedad, setFiltroAntiguedad] = useState('todas');
   const [filtroEstadoTecnico, setFiltroEstadoTecnico] = useState('todos');
-  const [busqueda, setBusqueda] = useState('');
-  const [pagina, setPagina] = useState(1);
-  const [porPagina, setPorPagina] = useState(10);
-  const [modoVista, setModoVista] = useState(() => localStorage.getItem('expertools-vista-tecnico') || 'tarjetas');
   const [ordenExpandida, setOrdenExpandida] = useState(null);
-  const solicitudActual = useRef(0);
 
   // Formularios de cotizacion, uno por orden: { ordenId: {repuestos, dictamen, monto} }
   const [formsCotizacion, setFormsCotizacion] = useState({});
-  const cargarOrdenes = useCallback(async () => {
-    const solicitud = ++solicitudActual.current;
+  async function cargarOrdenes() {
     try {
-      const parametros = new URLSearchParams({
-        modo: 'lista',
-        vista: 'tecnico',
-        pagina: String(pagina),
-        por_pagina: String(porPagina),
-        buscar: busqueda,
-        estado: filtroEstadoTecnico,
-        antiguedad: filtroAntiguedad,
-      });
-      const datos = await apiFetch(`ordenes.php?${parametros.toString()}`);
-      if (solicitud !== solicitudActual.current) return;
-      setOrdenes(datos.ordenes);
-      setListaMeta(datos);
-      setError('');
+      const datos = await apiFetch('ordenes.php');
+      setOrdenes(datos.filter((o) => ESTADOS_ACCIONABLES.includes(o.estado_actual)));
     } catch (err) {
-      if (solicitud === solicitudActual.current) setError(err.message);
+      setError(err.message);
     } finally {
-      if (solicitud === solicitudActual.current) setCargando(false);
+      setCargando(false);
     }
-  }, [busqueda, filtroAntiguedad, filtroEstadoTecnico, pagina, porPagina]);
+  }
 
   useEffect(() => {
-    const temporizador = setTimeout(cargarOrdenes, 200);
+    const temporizador = setTimeout(() => cargarOrdenes(), 0);
     return () => clearTimeout(temporizador);
-  }, [cargarOrdenes]);
+  }, []);
 
   async function cambiarEstadoSimple(ordenId, nuevoEstado) {
     setError('');
@@ -309,22 +307,16 @@ function PanelTecnico() {
     setOrdenExpandida((actual) => (actual === ordenId ? null : ordenId));
   }
 
-  const ordenesFiltradas = ordenes;
-  const conteosEstado = listaMeta?.conteos_estado || {};
-  const gruposEstadoTecnico = [
-    { key: 'recibido', label: 'Recibido', estados: ['recibido', 'sin_respuesta'] },
-    { key: 'cotizado', label: 'Cotizado', estados: ['cotizado'] },
-    { key: 'esperando_respuesta', label: 'En espera de respuesta', estados: ['esperando_respuesta'] },
-    { key: 'esperando_abono', label: 'Esperando abono', estados: ['esperando_abono'] },
-    { key: 'en_reparacion', label: 'En reparación', estados: ['en_diagnostico', 'esperando_tecnico', 'en_reparacion', 'esperando_repuesto', 'finalizado_tecnico'] },
-  ];
+  const ordenesFiltradas = ordenes
+    .filter((orden) => coincideFiltroAntiguedad(orden.fecha_ingreso, filtroAntiguedad))
+    .filter((orden) => filtroEstadoTecnico === 'todos' || orden.estado_actual === filtroEstadoTecnico);
 
   return (
-    <div className={`operations-panel modo-lista-${modoVista}`}>
+    <div className="operations-panel">
       <h2 className="h4 border-start border-4 ps-3">Órdenes por atender (orden de llegada)</h2>
       <div className="d-flex align-items-center gap-2 mb-3">
         <label className="fw-semibold" htmlFor="filtro-antiguedad-tecnico">Filtrar por antigüedad</label>
-        <select id="filtro-antiguedad-tecnico" className="form-select" style={{ maxWidth: '280px' }} value={filtroAntiguedad} onChange={(e) => { setFiltroAntiguedad(e.target.value); setPagina(1); }}>
+        <select id="filtro-antiguedad-tecnico" className="form-select" style={{ maxWidth: '280px' }} value={filtroAntiguedad} onChange={(e) => setFiltroAntiguedad(e.target.value)}>
           <option value="todas">Todas las órdenes</option>
           <option value="una_semana">1 semana o más</option>
           <option value="dos_tres_semanas">2 a 3 semanas</option>
@@ -337,42 +329,26 @@ function PanelTecnico() {
         <span><i className="leyenda-color antiguedad-roja" /> 4 semanas o más</span>
       </div>
       <div className="tabs-filtro-estado" role="tablist" aria-label="Filtrar por estado">
-        <button type="button" className={`resumen-chip resumen-chip-button ${filtroEstadoTecnico === 'todos' ? 'activo' : ''}`} onClick={() => { setFiltroEstadoTecnico('todos'); setPagina(1); }}>
-          <strong>{conteosEstado && Object.values(conteosEstado).reduce((total, cantidad) => total + cantidad, 0)}</strong> Todos
+        <button type="button" className={`resumen-chip resumen-chip-button ${filtroEstadoTecnico === 'todos' ? 'activo' : ''}`} onClick={() => setFiltroEstadoTecnico('todos')}>
+          Todos
         </button>
-        {gruposEstadoTecnico.map(({ key, label, estados }) => {
-          const cantidad = estados.reduce((total, estado) => total + (conteosEstado[estado] || 0), 0);
-          return (
-          <button type="button" key={key} className={`resumen-chip resumen-chip-button ${filtroEstadoTecnico === key ? 'activo' : ''}`} onClick={() => { setFiltroEstadoTecnico(key); setPagina(1); }}>
-            <strong>{cantidad}</strong> {label}
+        {ESTADOS_ACCIONABLES.filter((estado) => ordenes.some((orden) => orden.estado_actual === estado)).map((estado) => (
+          <button type="button" key={estado} className={`resumen-chip resumen-chip-button ${filtroEstadoTecnico === estado ? 'activo' : ''}`} onClick={() => setFiltroEstadoTecnico(estado)}>
+            {formatearEstado(estado)}
           </button>
-          );
-        })}
+        ))}
       </div>
-      <ControlesListaOrdenes
-        busqueda={busqueda}
-        onBusqueda={(valor) => { setBusqueda(valor); setPagina(1); }}
-        pagina={listaMeta?.pagina || pagina}
-        onPagina={setPagina}
-        totalPaginas={listaMeta?.total_paginas || 1}
-        total={listaMeta?.total || 0}
-        porPagina={porPagina}
-        onPorPagina={(valor) => { setPorPagina(valor); setPagina(1); }}
-        modoVista={modoVista}
-        onModoVista={(modo) => {
-          setModoVista(modo);
-          localStorage.setItem('expertools-vista-tecnico', modo);
-        }}
-      />
       {error && <p className="alert alert-danger">{error}</p>}
-      {listaMeta?.total === 0 && <p className="alert alert-light border">{busqueda ? 'No hay órdenes que coincidan con la búsqueda y los filtros.' : 'No hay órdenes pendientes por ahora.'}</p>}
+      {ordenes.length === 0 && <p className="alert alert-light border">No hay órdenes pendientes por ahora.</p>}
+      {ordenes.length > 0 && ordenesFiltradas.length === 0 && <p className="alert alert-light border">Ninguna orden coincide con el filtro seleccionado.</p>}
 
+      <div className="panel-lista-ordenes">
       {ordenesFiltradas.map((orden) => (
         <OrdenAcordeon
           key={orden.id}
           orden={orden}
           kicker="Trabajo en cola"
-          claseExtra={`${antiguedadIngreso(orden.fecha_ingreso)?.clase || ''} ${modoVista === 'compacto' ? 'orden-acordeon-compacto' : ''}`}
+          claseExtra={antiguedadIngreso(orden.fecha_ingreso)?.clase || ''}
           expandido={ordenExpandida === orden.id}
           onToggle={() => alternarExpandida(orden.id)}
         >
@@ -538,6 +514,7 @@ function PanelTecnico() {
           </div>
         </OrdenAcordeon>
       ))}
+      </div>
     </div>
   );
 }
