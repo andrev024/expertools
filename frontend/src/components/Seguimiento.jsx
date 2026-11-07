@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { apiFetch } from '../api';
 import { formatearEstado } from '../utils/textoUI';
+import { formatearFechaBogota } from '../utils/fecha';
 import Footer from './Footer';
 
 function Seguimiento({ embebido = false }) {
@@ -139,7 +140,7 @@ function Seguimiento({ embebido = false }) {
                       // un id único propio, y la lista no se reordena ni edita.
                       <li key={index} className="list-group-item px-0 py-3 d-flex justify-content-between align-items-center gap-3">
                         <span className="fw-medium">{formatearEstado(paso.estado)}</span>
-                        <time className="small text-secondary text-nowrap">{paso.fecha}</time>
+                        <time className="small text-secondary text-nowrap">{formatearFechaBogota(paso.fecha)}</time>
                       </li>
                     ))}
                   </ul>

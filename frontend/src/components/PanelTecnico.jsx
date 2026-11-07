@@ -8,6 +8,7 @@ import OrdenAcordeon from './OrdenAcordeon';
 import MenuAcciones from './MenuAcciones';
 import { abrirWhatsapp, textoSeguimiento, ENLACE_UBICACION, ENLACE_INSTAGRAM } from '../utils/whatsapp';
 import { descargarFacturaOrden } from '../utils/pdf';
+import { formatearFechaBogota, parsearFechaBogota } from '../utils/fecha';
 
 // Transiciones simples (via cambiar_estado.php) que no requieren formulario extra
 const TRANSICIONES_SIMPLES = {
@@ -18,17 +19,14 @@ const TRANSICIONES_SIMPLES = {
 };
 
 function antiguedadEstado(fecha) {
-  if (!fecha) return null;
-  const horas = Math.max(0, Math.floor((Date.now() - parsearFechaBogota(fecha).getTime()) / 3600000));
+  const fechaParseada = parsearFechaBogota(fecha);
+  if (!fechaParseada) return null;
+  const horas = Math.max(0, Math.floor((Date.now() - fechaParseada.getTime()) / 3600000));
   return { horas, clase: horas >= 48 ? 'alert-danger' : horas >= 24 ? 'alert-warning' : 'alert-success' };
 }
 
 function mostrarFecha(fecha) {
-  return fecha ? parsearFechaBogota(fecha).toLocaleString('es-CO', { timeZone: 'America/Bogota' }) : 'sin fecha';
-}
-
-function parsearFechaBogota(fecha) {
-  return new Date(`${fecha.replace(' ', 'T')}-05:00`);
+  return formatearFechaBogota(fecha);
 }
 
 function fechaEstado(orden) {
@@ -36,8 +34,9 @@ function fechaEstado(orden) {
 }
 
 function antiguedadIngreso(fecha) {
-  if (!fecha) return null;
-  const dias = Math.max(0, Math.floor((Date.now() - parsearFechaBogota(fecha).getTime()) / 86400000));
+  const fechaParseada = parsearFechaBogota(fecha);
+  if (!fechaParseada) return null;
+  const dias = Math.max(0, Math.floor((Date.now() - fechaParseada.getTime()) / 86400000));
   return {
     dias,
     clase: dias >= 28 ? 'antiguedad-roja' : dias >= 14 ? 'antiguedad-naranja' : dias >= 7 ? 'antiguedad-amarilla' : '',

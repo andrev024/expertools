@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { apiFetch } from '../api';
 import { formatearEstado } from '../utils/textoUI';
+import { formatearFechaBogota } from '../utils/fecha';
 
 function HistorialOrden({ ordenId, compacto = false }) {
   const [abierto, setAbierto] = useState(false);
@@ -42,7 +43,7 @@ function HistorialOrden({ ordenId, compacto = false }) {
             <li key={`${paso.fecha}-${index}`}>
               <div className="history-item-head">
                 <strong>{formatearEstado(paso.estado)}</strong>
-                <time>{paso.fecha}</time>
+                <time>{formatearFechaBogota(paso.fecha)}</time>
               </div>
               {paso.comentario && <p>{paso.comentario}</p>}
               {paso.usuario_nombre && <small>Registrado por {paso.usuario_nombre}</small>}

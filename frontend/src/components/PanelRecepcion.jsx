@@ -9,6 +9,7 @@ import MenuAcciones from './MenuAcciones';
 import { formatearEstado, formatearTipoOrden, normalizarEstado } from '../utils/textoUI';
 import { abrirWhatsapp, textoSeguimiento, ENLACE_UBICACION, ENLACE_INSTAGRAM, formatearAccesorios } from '../utils/whatsapp';
 import { descargarFacturaOrden, obtenerCotizacionOrden } from '../utils/pdf';
+import { formatearFechaBogota, parsearFechaBogota } from '../utils/fecha';
 
 function antiguedadEstado(fecha) {
   if (!fecha) return null;
@@ -24,18 +25,7 @@ function antiguedadEstado(fecha) {
 }
 
 function mostrarFecha(fecha) {
-  const fechaParseada = parsearFechaBogota(fecha);
-  return fechaParseada && !Number.isNaN(fechaParseada.getTime())
-    ? fechaParseada.toLocaleString('es-CO', { timeZone: 'America/Bogota' })
-    : 'sin fecha';
-}
-
-function parsearFechaBogota(fecha) {
-  if (!fecha) return null;
-  const valor = String(fecha).trim();
-  const tieneZonaHoraria = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(valor);
-  const fechaNormalizada = valor.includes('T') ? valor : valor.replace(' ', 'T');
-  return new Date(tieneZonaHoraria ? fechaNormalizada : `${fechaNormalizada}-05:00`);
+  return formatearFechaBogota(fecha);
 }
 
 function fechaEstado(orden) {
