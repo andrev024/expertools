@@ -114,10 +114,12 @@ function crearOrden(\PDO $pdo, object $usuarioAuth): void
 
         if ($articulo && !empty($articulo['id'])) {
             $stmtArticulo = $pdo->prepare(
-                'UPDATE articulo a
-                 JOIN cliente c ON c.id = a.cliente_id
-                 SET a.tipo = ?, a.marca = ?, a.modelo = ?, a.serial = ?
-                 WHERE a.id = ? AND c.ferreteria_id = ?'
+                'UPDATE articulo
+                 SET tipo = ?, marca = ?, modelo = ?, serial = ?
+                 WHERE id = ?
+                   AND cliente_id IN (
+                       SELECT id FROM cliente WHERE ferreteria_id = ?
+                   )'
             );
             $stmtArticulo->execute([
                 trim((string) ($articulo['tipo'] ?? '')),
@@ -146,14 +148,17 @@ function crearOrden(\PDO $pdo, object $usuarioAuth): void
                  VALUES (?, ?, ?, ?, ?, 'recibido', ?, NOW())"
         );
         $stmt->execute([$ferreteriaId, $codigoSeguimiento, $articuloId, $tipo, $ordenOriginalId, $ubicacion ?: null]);
-        $ordenId = $pdo->lastInsertId();
+        $ordenId = Database::getLastInsertId($pdo, 'orden_servicio');
 
         $stmtHistorial = $pdo->prepare(
             "INSERT INTO historial_estado (orden_id, estado, comentario, usuario_id)
              VALUES (?, 'recibido', ?, ?)"
         );
+        $agregadorNombres = $pdo->getAttribute(\PDO::ATTR_DRIVER_NAME) === 'pgsql'
+            ? "STRING_AGG(nombre, ', ')"
+            : "GROUP_CONCAT(nombre SEPARATOR ', ')";
         $stmtAccesorios = $pdo->prepare(
-            "SELECT GROUP_CONCAT(nombre SEPARATOR ', ')
+            "SELECT {$agregadorNombres}
              FROM accesorio
              WHERE articulo_id = ?"
         );

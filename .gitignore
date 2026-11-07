@@ -1,5 +1,11 @@
 # Variables de entorno (contiene credenciales reales, nunca se sube)
 .env
+
+# Respaldo con datos reales descargado de Aiven
+database/schema_actual.sql
+
+# Certificados locales de los servicios gestionados
+backend/certs/*.pem
  
 # Dependencias de Composer (se regeneran con composer install)
 vendor/

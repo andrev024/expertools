@@ -4,7 +4,7 @@
 
 - Docker Desktop con Docker Compose
 - Git
-- PHP 8.2 y Composer, solo si se ejecutan pruebas fuera de Docker
+- PHP 8.2 con `pdo_mysql` o `pdo_pgsql` y Composer, solo si se ejecutan pruebas fuera de Docker
 - Node.js y npm, solo si se desarrolla el frontend con Vite
 
 ## Ejecucion recomendada
@@ -23,6 +23,11 @@ Servicios disponibles:
 | API | `http://localhost:8000` |
 | MySQL desde el host | `localhost:3307` |
 | MySQL dentro de Docker | `db:3306` |
+
+El entorno local sigue usando MySQL. El backend también admite PostgreSQL
+configurando `DB_DRIVER=pgsql`; la imagen Docker instala ambos controladores
+PDO para permitir preparar y validar la migración sin reemplazar aún la base
+actual.
 
 La base de datos se inicializa con `database/schema.sql` y `database/seed.sql` la primera vez que se crea el volumen.
 
@@ -105,6 +110,7 @@ Crear `backend/.env` con valores locales:
 
 ```dotenv
 DB_HOST=localhost
+DB_DRIVER=mysql
 DB_NAME=taller_tracker
 DB_USER=root
 DB_PASS=
@@ -113,6 +119,60 @@ JWT_EXPIRATION_SECONDS=28800
 ```
 
 No reutilizar la clave incluida en `docker-compose.yml` para un entorno real. Las credenciales y secretos no deben subirse al repositorio.
+
+### Conexión a PostgreSQL de Aiven
+
+Cuando la base PostgreSQL ya esté creada y tenga el esquema y los datos
+migrados, configura en el servicio backend de Render las variables entregadas
+por Aiven:
+
+```dotenv
+DB_DRIVER=pgsql
+DB_HOST=host-de-aiven
+DB_PORT=puerto-de-aiven
+DB_NAME=nombre-de-base
+DB_USER=usuario-de-aiven
+DB_PASS=secreto-de-aiven
+DB_SSL_MODE=require
+```
+
+Si Aiven proporciona un certificado CA y se monta en el contenedor, añade
+`DB_SSL_CA_PATH` con su ruta y utiliza `DB_SSL_MODE=verify-full` para validar
+también el hostname. No cambies la conexión de producción hasta que el
+respaldo MySQL se haya restaurado y validado en PostgreSQL; conserva MySQL
+intacto hasta verificar el login y las operaciones principales en producción.
+La descarga de respaldo de PostgreSQL requiere `pg_dump`, incluido en la
+imagen Docker del backend; valida que su versión cliente sea compatible con
+la versión del servidor Aiven.
+
+`database/schema_actual.sql` es una exportación de MySQL y
+`database/migration_v6_multiempresa.sql` contiene DDL de MySQL. No los ejecutes
+directamente en PostgreSQL. Mantén cualquier exportación con datos reales fuera
+de Git y de canales públicos; prepara el esquema PostgreSQL desde una copia
+controlada y valida el mapeo antes de migrar producción.
+
+`database/schema_postgresql.sql` define la estructura PostgreSQL equivalente al
+esquema multiempresa actual. Se aplica únicamente a una base PostgreSQL vacía;
+no contiene datos y no migra registros. Ensaya primero la carga de datos en una
+copia y verifica conteos y relaciones antes de cambiar el backend de producción.
+
+Para importar el archivo descargado `database/schema_actual.sql` a PostgreSQL,
+usa Docker para disponer del controlador PDO incluso si PHP local no tiene
+`pdo_pgsql`. Desde la raíz del proyecto, construye y ejecuta la imagen:
+
+```powershell
+docker build -t expertools-backend-pg .\backend
+docker run --rm -it --mount "type=bind,source=$($PWD.Path),target=/workspace" --workdir /workspace expertools-backend-pg php backend/bin/migrar_mysql_a_postgresql.php
+```
+
+El proceso lee el respaldo local, no se conecta a MySQL, y solicita el host,
+puerto, base, usuario y contraseña de PostgreSQL de Aiven. La contraseña se
+ingresa sin mostrarse. Usa SSL (`sslmode=require`); si tienes un certificado CA
+montado en el contenedor, proporciona su ruta para activar `verify-full`. El
+importador exige que el esquema destino contenga las diez tablas esperadas y
+esté vacío, muestra solo conteos, requiere escribir `IMPORTAR DATOS` y revierte
+toda la copia si falla alguna inserción o verificación. No modifica el archivo
+de respaldo ni la base MySQL original.
 
 ## Configurar logos en Cloudflare R2
 

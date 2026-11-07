@@ -1,12 +1,9 @@
 # Imagen base: PHP 8.2 con el servidor Apache ya incluido
 FROM php:8.2-apache
  
-# Instala las extensiones de PHP que tu app necesita: PDO para MySQL.
-RUN docker-php-ext-install pdo pdo_mysql
- 
-# La extension zip necesita la libreria del sistema libzip-dev primero.
-RUN apt-get update && apt-get install -y libzip-dev unzip \
-    && docker-php-ext-install zip \
+# Instala PDO para los motores usados durante la migración.
+RUN apt-get update && apt-get install -y libpq-dev libzip-dev postgresql-client unzip \
+    && docker-php-ext-install pdo pdo_mysql pdo_pgsql zip \
     && rm -rf /var/lib/apt/lists/*
 
 RUN printf 'upload_max_filesize=3M\npost_max_size=4M\n' > /usr/local/etc/php/conf.d/uploads.ini

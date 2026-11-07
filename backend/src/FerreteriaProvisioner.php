@@ -70,7 +70,7 @@ class FerreteriaProvisioner
                  VALUES (?, ?, ?, 600)'
             );
             $crearFerreteria->execute([$slug, $nombreComercial, $codigoPrefijo]);
-            $ferreteriaId = (int) $pdo->lastInsertId();
+            $ferreteriaId = (int) Database::getLastInsertId($pdo, 'ferreteria');
 
             $crearAdministrador = $pdo->prepare(
                 'INSERT INTO usuario
@@ -92,7 +92,7 @@ class FerreteriaProvisioner
                 $pdo->rollBack();
             }
 
-            if ((string) $e->getCode() === '23000') {
+            if (in_array((string) $e->getCode(), ['23000', '23505'], true)) {
                 throw new RuntimeException(
                     'Ese slug ya existe o el correo ya está registrado en otra ferretería. No se creó la cuenta.',
                     0,
@@ -111,13 +111,17 @@ class FerreteriaProvisioner
 
     private static function validarEsquemaMigrado(PDO $pdo): void
     {
+        $esquema = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME) === 'pgsql'
+            ? $pdo->query('SELECT current_schema()')->fetchColumn()
+            : $pdo->query('SELECT DATABASE()')->fetchColumn();
+
         $stmt = $pdo->prepare(
             'SELECT COUNT(*)
              FROM information_schema.tables
-             WHERE table_schema = DATABASE()
+             WHERE table_schema = ?
                AND table_name = ?'
         );
-        $stmt->execute(['ferreteria']);
+        $stmt->execute([$esquema, 'ferreteria']);
         if ((int) $stmt->fetchColumn() !== 1) {
             throw new RuntimeException('La tabla ferreteria no existe. Primero aplica y valida la migración multiempresa.');
         }
@@ -125,11 +129,11 @@ class FerreteriaProvisioner
         $stmt = $pdo->prepare(
             'SELECT COUNT(*)
              FROM information_schema.columns
-             WHERE table_schema = DATABASE()
+             WHERE table_schema = ?
                AND table_name = ?
                AND column_name = ?'
         );
-        $stmt->execute(['usuario', 'ferreteria_id']);
+        $stmt->execute([$esquema, 'usuario', 'ferreteria_id']);
         if ((int) $stmt->fetchColumn() !== 1) {
             throw new RuntimeException('Falta usuario.ferreteria_id. Primero aplica y valida la migración multiempresa.');
         }

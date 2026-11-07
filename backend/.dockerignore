@@ -3,3 +3,5 @@ vendor/
 .git
 tests/
 *.md
+certs/postgresql-ca.pem
+postgresql-ca.pem

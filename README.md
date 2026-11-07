@@ -42,7 +42,7 @@ El flujo de negocio se definió tras varias iteraciones con el dueño real del t
 |---|---|
 | Backend | PHP 8.2 (sin framework), PDO, JWT (firebase/php-jwt) |
 | Frontend | React 18 + Vite, React Router |
-| Base de datos | MySQL 8 |
+| Base de datos | MySQL 8 y PostgreSQL (PDO); PostgreSQL es el destino de migración |
 | Testing | PHPUnit |
 | Contenedores | Docker, Docker Compose (multi-stage builds) |
 | CI/CD | GitHub Actions |
@@ -57,7 +57,7 @@ graph LR
     Recepcion[Recepcion] -->|crea ordenes, entrega| Frontend
     Tecnico[Tecnico] -->|diagnostica, cotiza, repara| Frontend
     Frontend[React - Vercel] -->|REST API + JWT| Backend[PHP API - Render]
-    Backend -->|PDO + SSL| DB[(MySQL - Aiven)]
+    Backend -->|PDO + SSL| DB[(Aiven: MySQL actual o PostgreSQL tras la migración)]
 ```
 
 ## Modelo de datos

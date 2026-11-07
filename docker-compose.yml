@@ -31,6 +31,7 @@ services:
       db:
         condition: service_healthy
     environment:
+      DB_DRIVER: mysql
       DB_HOST: db
       DB_NAME: taller_tracker
       DB_USER: root

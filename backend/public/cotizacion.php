@@ -121,7 +121,7 @@ function registrarCotizacion(\PDO $pdo, object $usuarioAuth): void
              VALUES (?, ?, ?, ?, ?, ?, ?, 'pendiente')"
         );
         $stmtCotizacion->execute([$ordenId, $repuestos, $dictamen, $monto, $subtotal, $iva, $abono]);
-        $cotizacionId = $pdo->lastInsertId();
+        $cotizacionId = Database::getLastInsertId($pdo, 'cotizacion');
 
         $stmtDetalle = $pdo->prepare(
             'INSERT INTO cotizacion_detalle

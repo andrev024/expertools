@@ -109,7 +109,7 @@ POWERSHELL;
 
 try {
     $pdo = Database::getConnection();
-    echo "Base de datos destino: " . env('DB_HOST', 'localhost') . " / " . $pdo->query('SELECT DATABASE()')->fetchColumn() . PHP_EOL;
+    echo "Base de datos destino: " . env('DB_HOST', 'localhost') . " / " . env('DB_NAME', 'taller_tracker') . PHP_EOL;
     echo "La migración multiempresa debe estar aplicada antes de continuar." . PHP_EOL . PHP_EOL;
 
     $nombreComercial = leerLinea('Nombre comercial: ');

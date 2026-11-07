@@ -180,7 +180,7 @@ function crearCliente(\PDO $pdo, int $ferreteriaId, ?array $datos = null): void
 
     http_response_code(201);
     echo json_encode([
-        'id' => $pdo->lastInsertId(),
+        'id' => Database::getLastInsertId($pdo, 'cliente'),
         'nombre' => $nombre,
         'empresa' => $empresa,
         'correo' => $correo,

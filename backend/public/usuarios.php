@@ -40,7 +40,7 @@ if ($metodo === 'POST' || $metodo === 'PUT') {
                 'INSERT INTO usuario (ferreteria_id, nombre, email, password_hash, rol) VALUES (?, ?, ?, ?, ?)'
             );
             $stmt->execute([$ferreteriaId, $nombre, $email, password_hash($password, PASSWORD_DEFAULT), $rol]);
-            $id = $pdo->lastInsertId();
+            $id = Database::getLastInsertId($pdo, 'usuario');
         } else {
             if (!$id) {
                 http_response_code(400);

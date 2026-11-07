@@ -2,7 +2,7 @@
 
 ## Backend sin framework
 
-PHP 8.2 sin framework mantiene pequeno el despliegue y hace explicito el flujo HTTP, la autenticacion y el acceso PDO a MySQL. La logica de negocio compartida vive en `backend/src/`.
+PHP 8.2 sin framework mantiene pequeno el despliegue y hace explicito el flujo HTTP, la autenticacion y el acceso PDO. La conexión admite MySQL y PostgreSQL mediante `DB_DRIVER`; la producción permanece en MySQL hasta completar y validar la migración de datos. La lógica de negocio compartida vive en `backend/src/`.
 
 ## Maquina de estados
 
@@ -10,7 +10,7 @@ Las transiciones se centralizan en `MaquinaEstados` para evitar que cada endpoin
 
 ## Servicios administrados
 
-La produccion usa Render para la API, Vercel para el frontend y Aiven para MySQL. Esta combinacion reduce el mantenimiento de servidores para un sistema de trafico bajo y permite despliegues automaticos desde Git.
+La producción usa Render para la API, Vercel para el frontend y Aiven para la base de datos. La instancia MySQL existente debe mantenerse activa hasta validar PostgreSQL, el respaldo y el cambio de conexión en producción.
 
 ## Multiempresa
 
@@ -37,7 +37,7 @@ secretos de R2 se configuran únicamente en Render.
 
 ## Docker
 
-Docker Compose reproduce localmente la relacion entre frontend, backend y base de datos. El volumen de MySQL conserva los datos entre reinicios; los scripts SQL de inicializacion solo se ejecutan al crear una base vacia.
+Docker Compose conserva MySQL para el entorno local actual. La imagen del backend incluye ambos controladores PDO; el motor se elige con `DB_DRIVER`. El volumen de MySQL conserva los datos entre reinicios; los scripts SQL de inicialización solo se ejecutan al crear una base vacía.
 
 ## Seguridad operativa
 

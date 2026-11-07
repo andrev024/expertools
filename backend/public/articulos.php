@@ -117,7 +117,7 @@ function crearArticulo(\PDO $pdo, int $ferreteriaId, ?array $datos = null): void
             'INSERT INTO articulo (cliente_id, tipo, marca, modelo, serial) VALUES (?, ?, ?, ?, ?)'
         );
         $stmt->execute([$clienteId, $tipo, $marca, $modelo, $serial]);
-        $articuloId = $pdo->lastInsertId();
+        $articuloId = Database::getLastInsertId($pdo, 'articulo');
         $stmtAccesorio = $pdo->prepare('INSERT INTO accesorio (articulo_id, nombre, descripcion) VALUES (?, ?, ?)');
         foreach ($accesorios as $accesorio) {
             $nombre = trim((string) ($accesorio['nombre'] ?? ''));

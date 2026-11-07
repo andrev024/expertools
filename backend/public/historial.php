@@ -10,6 +10,9 @@ header('Content-Type: application/json');
 $usuarioAuth = Middleware::requireAuth(['recepcion', 'tecnico', 'admin']);
 
 $pdo = Database::getConnection();
+$agregadorAccesorios = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME) === 'pgsql'
+    ? "STRING_AGG(a.nombre, ', ')"
+    : "GROUP_CONCAT(a.nombre SEPARATOR ', ')";
 
 $ordenId = $_GET['orden_id'] ?? null;
 
@@ -21,7 +24,7 @@ if (!$ordenId) {
 
 $stmt = $pdo->prepare(
     "SELECT h.estado, h.comentario, h.fecha, u.nombre AS usuario_nombre,
-            COALESCE((SELECT GROUP_CONCAT(a.nombre SEPARATOR ', ')
+            COALESCE((SELECT {$agregadorAccesorios}
                       FROM accesorio a
                       JOIN orden_servicio os2 ON os2.articulo_id = a.articulo_id
                       WHERE os2.id = h.orden_id), '') AS accesorios
